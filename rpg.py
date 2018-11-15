@@ -754,10 +754,6 @@ class Player(LivingEntity):
         self.canPlay = False
         self.hasPlay = False
 
-    def draw(self, screen):
-        screen.blit(self.texture, (self.x, self.y));
-        screen.blit(FONT.render(str(self.name), 1, (255,255,255)), (self.x, self.y - 10))
-
     def tick(self):
         if self.experience >= (self.level + 1) * 50:
             levelUp()
@@ -771,9 +767,9 @@ class Enemy(LivingEntity):
     def attack(self, player):
         player.health -= self.attackValue * self.level
 
-    def draw(self, screen):
-        screen.blit(self.texture, (self.x, self.y));
-        screen.blit(FONT.render(str("self.name"), 1, (255,255,255)), (self.x, self.y - 10))
+    #def draw(self, screen):
+    #    screen.blit(self.texture, (self.x, self.y));
+    #    screen.blit(FONT.render(str("self.name"), 1, (255,255,255)), (self.x, self.y - 10))
 
 class Action:
     def __init__(self, icon):
