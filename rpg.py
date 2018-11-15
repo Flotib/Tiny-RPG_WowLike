@@ -59,7 +59,7 @@ Q_RARE = (0, 112, 221)
 Q_EPIC = (163, 53, 238)
 Q_LEGENDARY = (255, 128, 0)
 
-
+  
 pygame.init()
 
 FONT = pygame.font.Font(None,30)
@@ -543,11 +543,7 @@ class UIManager(Drawable, Tickable):
 
     def notifyError(self, error):
         self.errorText = error
-        #rect = pygame.Surface((100,100), pygame.SRCALPHA, 32)
-        #rect.fill((0, 0, 0, 5))           TEST POUR PLUS TARD --- ESTOMPER LE TEXTE ROUGE PETIT A PETIT
-        #screen.blit(rect, (rectangle))
         self.errorTextComponent = Text(0, 0, error, RED).create()
-        
         self.errorRemainingTick = ERROR_REMAINING_TICK
 
     def updateMousePosition(self, x, y):
