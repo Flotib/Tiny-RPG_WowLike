@@ -12,6 +12,7 @@ MOUSE_MIDDLE = 2
 MOUSE_RIGHT = 3
 
 # SPELL ERROR
+ACTION_REPLAY = -2
 ACTION_SUCCESS = -1
 SPELL_ERROR_REASON_NOT_ENOUGHT_MANA = 0
 SPELL_ERROR_REASON_NOT_ENOUGHT_PLACE = 1
@@ -121,6 +122,7 @@ TEXTURE_ICON_SPELL_LIFETAP = Assets.loadResizedImage("assets/icons/spells/spell_
 TEXTURE_ICON_SPELL_HOLYHANDS = Assets.loadResizedImage("assets/icons/spells/spell_holyhands.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_IMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_immolation.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/spells/spell_curseofagony.png", RESIZE_SPELL)
+TEXTURE_ICON_SPELL_FLASHHEAL = Assets.loadResizedImage("assets/icons/spells/spell_flashheal.png", RESIZE_SPELL)
 TEXTURE_INVENTORY_SPELL_HOLDER = Assets.loadImage("assets/inventory/spellbar/holder.png")
 TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventory/spellbar/holder_border.png", (48, 50))
 TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
@@ -188,6 +190,8 @@ class SpellItem(Item):
             spellResult = self.spell.use(player, enemy)
             if spellResult == ACTION_SUCCESS:                
                 player.hasPlay = True
+            elif spellResult == ACTION_REPLAY:
+                player.hasPlay = False
             else:
                 uiManager.notifyError(SPELL_ERROR_TRADUCTION[spellResult])
 
@@ -279,7 +283,8 @@ class SpellInventory(Inventory):
             "HealDrainSpell",
             "ManaDrainSpell",
             "LifeTapSpell",
-            "HolyHandsHealingSpell"
+            "HolyHandsHealingSpell",
+            "FlashHealHealingSpell"
         ]
         offset = 0
 
@@ -828,7 +833,7 @@ class AttackSpell(Spell):
 
 class HealingSpell(Spell):
     pass
-                                  
+
 class HolyHandsHealingSpell(HealingSpell):
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_HOLYHANDS)
@@ -840,6 +845,18 @@ class HolyHandsHealingSpell(HealingSpell):
         player.mana -= 18
         player.giveEffect(HolyHandsRegenBuffEffect())                        
         return ACTION_SUCCESS
+
+class FlashHealHealingSpell(HealingSpell):
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_SPELL_FLASHHEAL)
+
+    def use(self, player, target):
+        if player.mana < 35:
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
+
+        player.mana -= 35   
+        player.offsetHealth(18)                     
+        return ACTION_REPLAY
 
 class HealDrainSpell(AttackSpell):
     def __init__(self):
