@@ -104,6 +104,7 @@ RESIZE_SPELL = (50, 50)
 RESIZE_EFFECT = (30, 30)
 
 TEXTURE_TEST = Assets.loadImage("assets/test.png")
+TEXTURE_TEST_ICON = Assets.loadResizedImage("assets/test.png", RESIZE_SPELL)
 TEXTURE_TEST_PORTRAIT = Assets.loadResizedImage("assets/targetframes/portraits/test.png", (94, 94))
 TEXTURE_HIGHLIGHT = Assets.loadImage("assets/inventory/spellbar/ButtonHilight.png")
 TEXTURE_HIGHLIGHTRESIZE = Assets.loadResizedImage("assets/inventory/spellbar/ButtonHilight.png", (52, 52))
@@ -267,7 +268,7 @@ class SpellInventory(Inventory):
             self.childs.append(ItemHolder(0, 0, 48, 46).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
         
         self.childs[24].item = SpellItem("BaseAttack")
-        self.childs[34].item = SpellItem("LevelUpAttack")
+        self.childs[34].item = SpellItem("LevelUpDebugAttack")
         self.childs[35].item = SpellItem("NothingAttack")
         
         spells = [
@@ -784,6 +785,14 @@ class Action:
 class Attack(Action):
     pass
 
+class LevelUpDebugAttack(Attack):
+    def __init__(self):
+        Action.__init__(self, TEXTURE_TEST_ICON)
+
+    def use(self, player, target):
+        player.levelUp()
+        return ACTION_SUCCESS  
+
 class BaseAttack(Attack):
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_BASEATTACK)
@@ -802,14 +811,6 @@ class NothingAttack(Attack):
         damage = 0
         target.health -= damage
 
-        return ACTION_SUCCESS  
-
-class LevelUpAttack(Attack):
-    def __init__(self):
-        Action.__init__(self, TEXTURE_TEST)
-
-    def use(self, player, target):
-        player.levelUp()
         return ACTION_SUCCESS  
      
 class Spell(Action):
