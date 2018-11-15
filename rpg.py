@@ -63,10 +63,10 @@ Q_LEGENDARY = (255, 128, 0)
 pygame.init()
 
 FONT = pygame.font.Font(None,30)
-FONTTINYWOW = pygame.font.Font("assets/fonts/frizquad.ttf",15)
-FONTWOW = pygame.font.Font("assets/fonts/frizquad.ttf",20)
-ARIALN = pygame.font.Font("assets/fonts/arialn.ttf",22)
-ARIALN_TINY = pygame.font.Font("assets/fonts/arialn.ttf",15)
+FONT_WOW_TINY = pygame.font.Font("assets/fonts/frizquad.ttf",15)
+FONT_WOW = pygame.font.Font("assets/fonts/frizquad.ttf",20)
+FONT_ARIALN = pygame.font.Font("assets/fonts/arialn.ttf",22)
+FONT_ARIALN_TINY = pygame.font.Font("assets/fonts/arialn.ttf",15)
 
 # CACHE
 ASSETS_CACHE = {}
@@ -285,7 +285,7 @@ class Text(UIComponent):
         self.renderedText = None
         self.textValue = text
         self.textColor = color
-        self.textFont = FONTTINYWOW
+        self.textFont = FONT_WOW_TINY
 
     def create(self):
         self.text(self.textValue, self.textColor)
@@ -333,8 +333,8 @@ class Button(UIComponent):
             color = WHITE
             if hasattr(self, 'buttonTextColor'):
                 color = self.buttonTextColor
-            size = FONTTINYWOW.size(str(self.buttonText))
-            screen.blit(FONTTINYWOW.render(str(self.buttonText), 1, color), (self.x + self.width - size[1], self.y))
+            size = FONT_WOW_TINY.size(str(self.buttonText))
+            screen.blit(FONT_WOW_TINY.render(str(self.buttonText), 1, color), (self.x + self.width - size[1], self.y))
         if self.selected:
             screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
             #pygame.draw.rect(screen, (40, 95, 220), (self.x, self.y, self.width, self.height), 2)
@@ -405,7 +405,7 @@ class SpellTooltip(Tooltip):
         self.y = WINDOW_HEIGHT * 0.8
 
         pygame.draw.rect(screen, WHITE, (self.x, self.y, self.width, self.height))
-        screen.blit(FONTWOW.render("Ceci est un test", 1, YELLOW_TEXT), (self.x, self.y))
+        screen.blit(FONT_WOW.render("Ceci est un test", 1, YELLOW_TEXT), (self.x, self.y))
 
 class ItemTooltip(Tooltip):
     def __init__(self, item):
@@ -420,8 +420,8 @@ class ItemTooltip(Tooltip):
         textsPositions = []
 
         for tooltipData in self.data:                                                
-            text = FONTWOW.render(tooltipData.dataText, True, tooltipData.dataColor)
-            size = FONTWOW.size(tooltipData.dataText)
+            text = FONT_WOW.render(tooltipData.dataText, True, tooltipData.dataColor)
+            size = FONT_WOW.size(tooltipData.dataText)
             texts.append(text)
             textsPositions.append(totalHeight)
             totalHeight += size[1]
@@ -513,7 +513,7 @@ class LivingEntityModularBar(ModularBar):
         screen.blit(self.scaledTextureContainer, (self.x, self.y))
 
         if self.selected:
-            text = Text(0, self.y + 1, str(value) + "/" + str(maxValue), LIGHT_GREY).font(ARIALN_TINY).create()
+            text = Text(0, self.y + 1, str(value) + "/" + str(maxValue), LIGHT_GREY).font(FONT_ARIALN_TINY).create()
             text.x = (WINDOW_WIDTH - text.width) / 2
             text.draw(screen)
             
