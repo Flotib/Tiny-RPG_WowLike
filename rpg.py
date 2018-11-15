@@ -45,12 +45,13 @@ ERROR_REMAINING_TICK = 60 * 5
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
-LIGHT_GREY = (195, 195, 195)
+LIGHT_GREY = (245, 245, 245)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 DARK_BLUE_BACK = (0, 0, 10)
 YELLOW_TEXT = (255, 213, 23)
+YELLOW_FRAME_TEXT = (240, 197, 0)
 BLUE_XP = (0, 66, 150)
 Q_POOR = (157, 157, 157)
 Q_COMMON = (255, 255, 255)
@@ -58,13 +59,19 @@ Q_UNCOMMON = (30, 255, 0)
 Q_RARE = (0, 112, 221)
 Q_EPIC = (163, 53, 238)
 Q_LEGENDARY = (255, 128, 0)
+LEVEL_DIFFICULTY_TRASH = (121, 121, 121)
+LEVEL_DIFFICULTY_EASY = (47, 131, 46)
+LEVEL_DIFFICULTY_NORMAL = (255, 255, 255)
+LEVEL_DIFFICULTY_MEDIUM = (224, 114, 57)
+LEVEL_DIFFICULTY_HARD = (255, 26, 26)
 
-  
+
 pygame.init()
 
 FONT = pygame.font.Font(None,30)
 FONT_WOW_TINY = pygame.font.Font("assets/fonts/frizquad.ttf",15)
 FONT_WOW = pygame.font.Font("assets/fonts/frizquad.ttf",20)
+FONT_WOW_VERY_TINY = pygame.font.Font("assets/fonts/frizquad.ttf",10)
 FONT_ARIALN = pygame.font.Font("assets/fonts/arialn.ttf",22)
 FONT_ARIALN_TINY = pygame.font.Font("assets/fonts/arialn.ttf",15)
 
@@ -97,6 +104,7 @@ RESIZE_SPELL = (50, 50)
 RESIZE_EFFECT = (30, 30)
 
 TEXTURE_TEST = Assets.loadImage("assets/test.png")
+TEXTURE_TEST_PORTRAIT = Assets.loadResizedImage("assets/targetframes/portraits/test.png", (94, 94))
 TEXTURE_HIGHLIGHT = Assets.loadImage("assets/inventory/spellbar/ButtonHilight.png")
 TEXTURE_HIGHLIGHTRESIZE = Assets.loadResizedImage("assets/inventory/spellbar/ButtonHilight.png", (52, 52))
 TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY = Assets.loadResizedImage("assets/inventory/spellbar/ButtonHilightTransparency.png", (52, 52))
@@ -124,7 +132,13 @@ TEXTURE_ICON_EFFECT_BUFF_REGEN = Assets.loadResizedImage("assets/icons/effects/B
 TEXTURE_XPBAR_UI = Assets.loadImage("assets/inventory/xpbar/xpbar.png")
 TEXTURE_FRAMESTATUES_HP = Assets.loadImage("assets/framestatues/hpbar.png")
 TEXTURE_FRAMESTATUES_MANA = Assets.loadImage("assets/framestatues/manabar.png")
+TEXTURE_FRAMESTATUES_RAGE = Assets.loadImage("assets/framestatues/ragebar.png")
 TEXTURE_FRAMESTATUES_XP = Assets.loadImage("assets/framestatues/xpbar.png")
+TEXTURE_FRAME_PLAYER = Assets.loadImage("assets/targetframes/playerframe/player_frame.png")
+TEXTURE_FRAME_ENEMY_NORMAL = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_normal.png")
+TEXTURE_FRAME_ENEMY_RARE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rare.png")
+TEXTURE_FRAME_ENEMY_RARE_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rareelite.png")
+TEXTURE_FRAME_ENEMY_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_elite.png")
 
 class Drawable:
     def draw(self, screen):
@@ -240,22 +254,31 @@ class UIContainerComponent(UIComponent):
             child.draw(screen)
 
 class Inventory(UIContainerComponent):
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, backgroundTexture):
         UIContainerComponent.__init__(self, x, y, width, height)
+        self.backgroundTexture = backgroundTexture
 
 class SpellInventory(Inventory):
     def __init__(self, player):
-        Inventory.__init__(self, 0, WINDOW_HEIGHT - INVENTORY_SPELL_HEIGHT, WINDOW_WIDTH, INVENTORY_SPELL_HEIGHT)
+        Inventory.__init__(self, 0, WINDOW_HEIGHT - INVENTORY_SPELL_HEIGHT, WINDOW_WIDTH, INVENTORY_SPELL_HEIGHT, None)
         self.player = player
 
         for i in range(0, INVENTORY_SPELL_ITEM_COUNT):
             self.childs.append(ItemHolder(0, 0, 48, 46).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
         
         self.childs[24].item = SpellItem("BaseAttack")
+        self.childs[34].item = SpellItem("LevelUpAttack")
         self.childs[35].item = SpellItem("NothingAttack")
         
         spells = [
-            "FireBallSpell", "ImmolationSpell", "CorruptionSpell", "CurseOfAgonySpell", "HealDrainSpell", "ManaDrainSpell", "LifeTapSpell", "HolyHandsHealingSpell"
+            "FireBallSpell",
+            "ImmolationSpell",
+            "CorruptionSpell",
+            "CurseOfAgonySpell",
+            "HealDrainSpell",
+            "ManaDrainSpell",
+            "LifeTapSpell",
+            "HolyHandsHealingSpell"
         ]
         offset = 0
 
@@ -273,11 +296,17 @@ class SpellInventory(Inventory):
                 holder.x = self.x + ((j - 1) * 49) + offset
                 holder.y = self.y - (50 * i) - 20
                 k+= 1
+    
     def onScreenResize(self, newScreenWidth, newScreenHeight):
         super().onScreenResize(newScreenWidth, newScreenHeight)
         self.y = WINDOW_HEIGHT - INVENTORY_SPELL_HEIGHT
         self.width = WINDOW_WIDTH
         self.updateButtons()
+
+    def draw(self, screen):
+        if self.backgroundTexture != None:
+            screen.blit(self.backgroundTexture, (self.x, self.y))
+        super().draw(screen)
 
 class Text(UIComponent):
     def __init__(self, x, y, text, color):
@@ -286,9 +315,14 @@ class Text(UIComponent):
         self.textValue = text
         self.textColor = color
         self.textFont = FONT_WOW_TINY
+        self.textOffsetY = 0
 
     def create(self):
         self.text(self.textValue, self.textColor)
+        return self
+
+    def color(self, newColor):
+        self.textColor = newColor
         return self
 
     def font(self, newFont):
@@ -307,7 +341,7 @@ class Text(UIComponent):
     def draw(self, screen):
         super().draw(screen)
         if self.renderedText != None:
-            screen.blit(self.renderedText, (self.x, self.y))
+            screen.blit(self.renderedText, (self.x, self.y + self.textOffsetY))
 
 class Button(UIComponent):
     def __init__(self, x, y, width, height):
@@ -488,39 +522,49 @@ class LivingEntityModularBar(ModularBar):
     def draw(self, screen):
         value = 0
         maxValue = 1
+        targetTexture = None
 
         if self.informationType == UI_MODULAR_BAR_INFO_TYPE_HEALTH:
             value = self.livingEntity.health
             maxValue = self.livingEntity.maxHealth
+            targetTexture = TEXTURE_FRAMESTATUES_HP
         elif self.informationType == UI_MODULAR_BAR_INFO_TYPE_MANA:
             value = self.livingEntity.mana
-            maxValue = self.livingEntity.maxHealth
+            maxValue = self.livingEntity.maxMana
+            targetTexture = TEXTURE_FRAMESTATUES_MANA
         elif self.informationType == UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE:
-            value = self.livingEntity.health
-            maxValue = self.livingEntity.health
+            value = self.livingEntity.experience
+            maxValue = self.livingEntity.maxExperience
+            targetTexture = TEXTURE_FRAMESTATUES_XP
+        
+        if value <= 0:
+            value = 0
+        if maxValue == 0:
+            maxValue = 1
 
         if self.cachedValue != value or self.cachedMaxValue != maxValue:
             self.invalidateCache()
+            self.cachedValue = value
+            self.cachedMaxValue = maxValue
 
         if not self.isCacheValid():
-            self.scaledTextureCache = pygame.transform.scale(TEXTURE_FRAMESTATUES_XP, (int(self.width * (value / maxValue)), self.height - 6))
+            self.scaledTextureCache = pygame.transform.scale(targetTexture, (int(self.width * (value / maxValue)), self.height - 6))
             self.scaledTextureContainer = pygame.transform.scale(TEXTURE_XPBAR_UI, (self.width, self.height))
 
         screen.blit(self.scaledTextureCache, (self.x, self.y + 3))
 
-        #if self.informationType == UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE or True:
-            #screen.blit(TEXTURE_XPBAR_UI, (100, 100, self.width, self.height))
-        screen.blit(self.scaledTextureContainer, (self.x, self.y))
+        if self.informationType == UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE:
+            screen.blit(self.scaledTextureContainer, (self.x, self.y))
 
         if self.selected:
             text = Text(0, self.y + 1, str(value) + "/" + str(maxValue), LIGHT_GREY).font(FONT_ARIALN_TINY).create()
-            text.x = (WINDOW_WIDTH - text.width) / 2
+            text.x = self.x + ((self.width - text.width) / 2)
+            text.textOffsetY = 2
             text.draw(screen)
-            
 
-class BottomLivingEntityHealthBar(LivingEntityModularBar):
+class BottomLivingEntityExperienceBar(LivingEntityModularBar):
     def __init__(self, livingEntity):
-        LivingEntityModularBar.__init__(self, 0, 0, 0, 20, UI_MODULAR_BAR_INFO_TYPE_HEALTH, livingEntity)
+        LivingEntityModularBar.__init__(self, 0, 0, 0, 20, UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE, livingEntity)
         self.onScreenResize(WINDOW_WIDTH, WINDOW_HEIGHT)
 
     def onScreenResize(self, newScreenWidth, newScreenHeight):
@@ -528,7 +572,66 @@ class BottomLivingEntityHealthBar(LivingEntityModularBar):
         self.x = int(WINDOW_WIDTH * 0.20)
         self.y = WINDOW_HEIGHT - self.height
         self.width = int(WINDOW_WIDTH * 0.60)
-        self.invalidateCache()
+        self.invalidateCache() 
+
+class LivingEntityStatusFrame(UIContainerComponent):
+    def __init__(self, x, y, frameTexture, livingEntity):
+        UIContainerComponent.__init__(self, x, y, 0, 0)
+        self.frameTexture = frameTexture
+        self.livingEntity = livingEntity
+
+        self.textColor = YELLOW_FRAME_TEXT
+
+        self.nameText = Text(0, 0, livingEntity.name, self.textColor).font(FONT_WOW_TINY).create()
+        self.healthBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_HEALTH, livingEntity)
+        self.manaBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_MANA, livingEntity)
+        self.levelText = Text(0, 0, "", self.textColor).font(FONT_WOW_TINY).create()
+        
+        self.childs.append(self.healthBar)
+        self.childs.append(self.manaBar)
+
+        self.width, self.height = self.frameTexture.get_rect().size
+
+    def tick(self):
+        super().tick()
+        self.levelText.text(str(self.livingEntity.level), self.textColor)
+
+    def draw(self, screen):
+        super().draw(screen)
+        if self.livingEntity.texture != None:
+            textureWidth, textureHeight = self.livingEntity.texture.get_rect().size
+            screen.blit(self.livingEntity.texture, (self.x + 78 + ((94 - textureWidth) / 2), self.y + 28 + ((94 - textureHeight) / 2)))
+        screen.blit(self.frameTexture, (self.x, self.y))
+        self.nameText.draw(screen)
+        self.levelText.draw(screen)
+        
+class PlayerEntityStatusFrame(LivingEntityStatusFrame):
+    def __init__(self, player):
+        LivingEntityStatusFrame.__init__(self, 0, 0, TEXTURE_FRAME_PLAYER, player)
+        self.onScreenResize(-1, -1)
+        self.healthBar.width = 197
+        self.healthBar.height = 22
+        self.manaBar.width = 197
+        self.manaBar.height = 22
+    
+    def tick(self):
+        super().tick()
+        self.updateSize()
+
+    def onScreenResize(self, newScreenWidth, newScreenHeight):
+        self.x = int(WINDOW_WIDTH * 0.01)
+        self.y = int(WINDOW_HEIGHT * 0.04)
+        self.nameText.x = self.x + 180 + ((199 - self.nameText.width) / 2)
+        self.nameText.y = self.y + 39 + ((29 - self.nameText.height) / 2)
+        self.healthBar.x = self.x + 182
+        self.healthBar.y = self.y + 67
+        self.manaBar.x = self.x + 182
+        self.manaBar.y = self.y + 86
+        self.updateSize()
+    
+    def updateSize(self):
+        self.levelText.x = self.x + 67 + ((43 - self.levelText.width) / 2)
+        self.levelText.y = self.y + 89 + ((45 - self.levelText.height) / 2)
 
 class UIManager(Drawable, Tickable):
     def __init__(self):
@@ -566,6 +669,8 @@ class UIManager(Drawable, Tickable):
 
     def draw(self, screen):
         if self.errorTextComponent != None:
+            self.errorTextComponent.x = (WINDOW_WIDTH - self.errorTextComponent.width) / 2
+            self.errorTextComponent.y = WINDOW_HEIGHT * 0.13
             self.errorTextComponent.draw(screen)
 
         for component in self.components:
@@ -606,19 +711,19 @@ class Entity(GameObject):
         return self.health <= 0
 
 class LivingEntity(Entity):
-    def __init__(self, x, y, health, mana, level):
+    def __init__(self, x, y, health, mana, level, experience):
         Entity.__init__(self, x, y, health)
         self.mana = mana
         self.maxMana = mana
         self.baseMana = mana
+        self.experience = experience
+        self.maxExperience = experience
+        self.baseExperience = experience
         self.level = level
         self.effects = []
 
     def levelUp(self):
-        levelUp(self.level + 1)
-
-    def levelUp(self, newLevel):
-        self.level = newLevel
+        self.level += 1
 
     def offsetMana(self, offset):
         newMana = self.mana + offset
@@ -641,11 +746,10 @@ class LivingEntity(Entity):
         self.effects.append(givenEffect)
 
 class Player(LivingEntity):
-    def __init__(self, x, y, health, mana, level, name, experience):
-        LivingEntity.__init__(self, x, y, health, mana, level)
+    def __init__(self, x, y, health, mana, level, name):
+        LivingEntity.__init__(self, x, y, health, mana, level, 0)
         self.name = name
-        self.experience = experience
-        self.texture = TEXTURE_PLAYER
+        self.texture = TEXTURE_TEST_PORTRAIT
         self.canPlay = False
         self.hasPlay = False
 
@@ -659,7 +763,7 @@ class Player(LivingEntity):
 
 class Enemy(LivingEntity):
     def __init__(self, x, y, health, level, attack):
-        LivingEntity.__init__(self, x, y, health, 0, level)
+        LivingEntity.__init__(self, x, y, health, 0, level, 0)
         self.attackValue = attack
         self.texture = TEXTURE_PLAYER
 
@@ -698,6 +802,14 @@ class NothingAttack(Attack):
         damage = 0
         target.health -= damage
 
+        return ACTION_SUCCESS  
+
+class LevelUpAttack(Attack):
+    def __init__(self):
+        Action.__init__(self, TEXTURE_TEST)
+
+    def use(self, player, target):
+        player.levelUp()
         return ACTION_SUCCESS  
      
 class Spell(Action):
@@ -998,7 +1110,7 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
         
 
 uiManager = UIManager()
-player = Player(75, 600, 100 , 100, 1, "Hero", 0)
+player = Player(75, 600, 100 , 100, 1, "Hero")
 gameLogic = GameLogic(player)
 enemy = Enemy(50, 50, 100, 1, 5)
 
@@ -1008,7 +1120,8 @@ gameLogic.gameObjects.append(enemy)
 #uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 #uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
 uiManager.components.append(SpellInventory(player))
-uiManager.components.append(BottomLivingEntityHealthBar(player).color(RED))
+uiManager.components.append(BottomLivingEntityExperienceBar(player))
+uiManager.components.append(PlayerEntityStatusFrame(player))
 
 uiManager.notifyError("C'est une erreur")
 
@@ -1051,7 +1164,7 @@ def handleEvent(event):
     elif event.type == pygame.KEYUP:
         player.resetVelocity()
 
-screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
+screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE, 32)
 pygame.display.set_caption(WINDOW_TITLE)
 clock = pygame.time.Clock()
 
@@ -1062,7 +1175,7 @@ while not done:
             done = True
         else:
             if event.type == pygame.VIDEORESIZE:
-                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE, 32)
                 WINDOW_WIDTH = event.w
                 WINDOW_HEIGHT = event.h
             handleEvent(event)
