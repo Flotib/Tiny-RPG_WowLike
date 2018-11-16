@@ -65,7 +65,7 @@ Q_EPIC = (163, 53, 238)
 Q_LEGENDARY = (255, 128, 0)
 LEVEL_DIFFICULTY_TRASH = (121, 121, 121)
 LEVEL_DIFFICULTY_EASY = (47, 131, 46)
-LEVEL_DIFFICULTY_NORMAL = (255, 255, 255)
+LEVEL_DIFFICULTY_NORMAL = (201, 201, 8)
 LEVEL_DIFFICULTY_MEDIUM = (224, 114, 57)
 LEVEL_DIFFICULTY_HARD = (255, 26, 26)
 
@@ -178,6 +178,12 @@ TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_1 = Assets.loadResizedImage("assets/targetf
 TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_2 = Assets.loadResizedImage("assets/targetframes/portraits/demons/pitlord2.png", RESIZE_PORTRAIT)
 TEXTURE_FRAME_PORTRAIT_DEMON_IMPMOTHER_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/impmother1.png", RESIZE_PORTRAIT)
 TEXTURE_FRAME_PORTRAIT_DEMON_INFERNAL_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/infernal1.png", RESIZE_PORTRAIT)
+
+class Maths:
+    
+    @staticmethod
+    def between(number, min, max):
+        return number >= min and number <= max
 
 
 class Drawable:
@@ -325,6 +331,7 @@ class SpellInventory(Inventory):
             self.childs.append(ItemHolder(0, 0, 48, 46).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
         
         self.childs[24].item = SpellItem("BaseAttack")
+        self.childs[33].item = SpellItem("EnemyLevelUpDebugAttack")
         self.childs[34].item = SpellItem("LevelUpDebugAttack")
         self.childs[35].item = SpellItem("NothingAttack")
         
@@ -640,6 +647,8 @@ class LivingEntityStatusFrame(UIContainerComponent):
         self.livingEntity = livingEntity
 
         self.textColor = YELLOW_FRAME_TEXT
+        self.portraitOffsetY = 0
+        self.iconsEffectOffset = (0, 0)
 
         self.nameText = Text(0, 0, livingEntity.name, self.textColor).font(FONT_WOW_TINY).create()
         self.healthBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_HEALTH, livingEntity)
@@ -659,16 +668,16 @@ class LivingEntityStatusFrame(UIContainerComponent):
         super().draw(screen)
         if self.livingEntity.texture != None:
             textureWidth, textureHeight = self.livingEntity.texture.get_rect().size
-            screen.blit(self.livingEntity.texture, (self.x + 78 + ((94 - textureWidth) / 2), self.y + 28 + ((94 - textureHeight) / 2)))
+            screen.blit(self.livingEntity.texture, (self.x + self.portraitOffsetY + ((94 - textureWidth) / 2), self.y + 28 + ((94 - textureHeight) / 2)))
         screen.blit(self.frameTexture, (self.x, self.y))
         self.nameText.draw(screen)
         self.levelText.draw(screen)
         
         xOffset = 0
         yOffset = 0
-        lineCount = 0        
+        lineCount = 0
         for effect in self.livingEntity.effects:
-            icon = Button(self.x + 182 + xOffset, self.y + 113 + yOffset, RESIZE_EFFECT[0], RESIZE_EFFECT[1]).texture(effect.texture).draw(screen)
+            icon = Button(self.x + self.iconsEffectOffset[0] + xOffset, self.y + self.iconsEffectOffset[1] + yOffset, RESIZE_EFFECT[0], RESIZE_EFFECT[1]).texture(effect.texture).draw(screen)
 
             xOffset += RESIZE_EFFECT[0] * 1.15
             lineCount += 1
@@ -685,6 +694,8 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
         self.healthBar.height = 22
         self.manaBar.width = 197
         self.manaBar.height = 22
+        self.portraitOffsetY = 78
+        self.iconsEffectOffset = (182, 113)
     
     def tick(self):
         super().tick()
@@ -703,6 +714,52 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
     
     def updateSize(self):
         self.levelText.x = self.x + 67 + ((43 - self.levelText.width) / 2)
+        self.levelText.y = self.y + 89 + ((45 - self.levelText.height) / 2)  
+        
+class EnemyEntityStatusFrame(LivingEntityStatusFrame):
+    def __init__(self, enemy):
+        LivingEntityStatusFrame.__init__(self, 0, 0, TEXTURE_FRAME_ENEMY_NORMAL, enemy)
+        self.onScreenResize(-1, -1)
+        self.healthBar.width = 197
+        self.healthBar.height = 22
+        self.manaBar.width = 197
+        self.manaBar.height = 22
+        self.portraitOffsetY = 258
+        self.iconsEffectOffset = (51, 113)
+    
+    def tick(self):
+        super().tick()
+        self.updateSize()
+        self.updateColorFromLevel()
+
+    def updateColorFromLevel(self):
+        if player.level - 6 >= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_TRASH
+        elif player.level - 5 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_EASY
+        elif player.level - 2 <= self.livingEntity.level and player.level + 2 >= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_NORMAL
+        elif player.level + 3 <= self.livingEntity.level and player.level + 4 >= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_MEDIUM
+        elif player.level + 5 <= self.livingEntity.level and player.level + 9 >= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_HARD
+        elif player.level + 10 <= self.livingEntity.level:
+            self.textColor = LEVEL_DIFFICULTY_HARD
+            pass # TODO Make an image support
+
+    def onScreenResize(self, newScreenWidth, newScreenHeight):
+        self.x = int(WINDOW_WIDTH * 0.99) - self.width
+        self.y = int(WINDOW_HEIGHT * 0.04)
+        self.nameText.x = self.x + 49 + ((199 - self.nameText.width) / 2)
+        self.nameText.y = self.y + 39 + ((29 - self.nameText.height) / 2)
+        self.healthBar.x = self.x + 51
+        self.healthBar.y = self.y + 67
+        self.manaBar.x = self.x + 51
+        self.manaBar.y = self.y + 86
+        self.updateSize()
+    
+    def updateSize(self):
+        self.levelText.x = self.x + 319 + ((43 - self.levelText.width) / 2)
         self.levelText.y = self.y + 89 + ((45 - self.levelText.height) / 2)
 
 class UIManager(Drawable, Tickable):
@@ -783,7 +840,7 @@ class Entity(GameObject):
         return self.health <= 0
 
 class LivingEntity(Entity):
-    def __init__(self, x, y, health, mana, level, experience):
+    def __init__(self, x, y, health, mana, name, level, experience):
         Entity.__init__(self, x, y, health)
         self.mana = mana
         self.maxMana = mana
@@ -791,6 +848,7 @@ class LivingEntity(Entity):
         self.experience = experience
         self.maxExperience = experience
         self.baseExperience = experience
+        self.name = name
         self.level = level
         self.effects = []
 
@@ -819,8 +877,7 @@ class LivingEntity(Entity):
 
 class Player(LivingEntity):
     def __init__(self, x, y, health, mana, level, name):
-        LivingEntity.__init__(self, x, y, health, mana, level, 0)
-        self.name = name
+        LivingEntity.__init__(self, x, y, health, mana, name, level, 0)
         self.texture = TEXTURE_TEST_PORTRAIT
         self.canPlay = False
         self.hasPlay = False
@@ -831,7 +888,7 @@ class Player(LivingEntity):
 
 class Enemy(LivingEntity):
     def __init__(self, x, y, health, level, attack):
-        LivingEntity.__init__(self, x, y, health, 0, level, 0)
+        LivingEntity.__init__(self, x, y, health, 0, "Enemy", level, 0)
         self.attackValue = attack
         self.texture = TEXTURE_PLAYER
 
@@ -858,6 +915,14 @@ class LevelUpDebugAttack(Attack):
 
     def use(self, player, target):
         player.levelUp()
+        return ACTION_SUCCESS  
+
+class EnemyLevelUpDebugAttack(Attack):
+    def __init__(self):
+        Action.__init__(self, TEXTURE_TEST_ICON)
+
+    def use(self, player, target):
+        target.levelUp()
         return ACTION_SUCCESS  
 
 class BaseAttack(Attack):
@@ -1202,6 +1267,7 @@ gameLogic.gameObjects.append(enemy)
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
+uiManager.components.append(EnemyEntityStatusFrame(enemy).drawBorder(True))
 
 uiManager.notifyError("C'est une erreur")
 
