@@ -43,7 +43,10 @@ INVENTORY_SPELL_HEIGHT = 50
 INVENTORY_SPELL_ITEM_MAX_ROW_COUNT = 12
 INVENTORY_SPELL_ITEM_COUNT = 36
 ERROR_REMAINING_TICK = 60 * 5
+FRAME_EFFECT_MAX_LINE_COUNT = 5
 
+
+#Colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 LIGHT_GREY = (245, 245, 245)
@@ -68,7 +71,7 @@ LEVEL_DIFFICULTY_HARD = (255, 26, 26)
 
 
 pygame.init()
-
+#Fonts
 FONT = pygame.font.Font(None,30)
 FONT_WOW_TINY = pygame.font.Font("assets/fonts/frizquad.ttf",15)
 FONT_WOW = pygame.font.Font("assets/fonts/frizquad.ttf",20)
@@ -76,7 +79,7 @@ FONT_WOW_VERY_TINY = pygame.font.Font("assets/fonts/frizquad.ttf",10)
 FONT_ARIALN = pygame.font.Font("assets/fonts/arialn.ttf",22)
 FONT_ARIALN_TINY = pygame.font.Font("assets/fonts/arialn.ttf",15)
 
-# CACHE
+#CACHE
 ASSETS_CACHE = {}
 
 class Assets:
@@ -100,18 +103,24 @@ class Assets:
                 image = TEXTURE_TEST
         
         return image
-
+#loading textures
 RESIZE_SPELL = (50, 50)
-RESIZE_EFFECT = (30, 30)
+RESIZE_EFFECT = (35, 35)
+RESIZE_PORTRAIT = (94, 94)
 
 TEXTURE_TEST = Assets.loadImage("assets/test.png")
 TEXTURE_TEST_ICON = Assets.loadResizedImage("assets/test.png", RESIZE_SPELL)
-TEXTURE_TEST_PORTRAIT = Assets.loadResizedImage("assets/targetframes/portraits/test.png", (94, 94))
+TEXTURE_TEST_PORTRAIT = Assets.loadResizedImage("assets/targetframes/portraits/test.png", RESIZE_PORTRAIT)
 TEXTURE_HIGHLIGHT = Assets.loadImage("assets/inventory/spellbar/ButtonHilight.png")
 TEXTURE_HIGHLIGHTRESIZE = Assets.loadResizedImage("assets/inventory/spellbar/ButtonHilight.png", (52, 52))
 TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY = Assets.loadResizedImage("assets/inventory/spellbar/ButtonHilightTransparency.png", (52, 52))
 TEXTURE_UI_GRYPHON = Assets.loadImage("assets/inventory/spellbar/gryphonspelldecoration.png")
 TEXTURE_PLAYER = Assets.loadImage("assets/player/human_male.png")
+
+TEXTURE_INVENTORY_SPELL_HOLDER = Assets.loadImage("assets/inventory/spellbar/holder.png")
+TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventory/spellbar/holder_border.png", (48, 50))
+TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
+
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/spell_baseattack.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_LIFEDRAIN = Assets.loadResizedImage("assets/icons/spells/spell_lifedrain.png", RESIZE_SPELL)
@@ -123,15 +132,14 @@ TEXTURE_ICON_SPELL_HOLYHANDS = Assets.loadResizedImage("assets/icons/spells/spel
 TEXTURE_ICON_SPELL_IMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_immolation.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/spells/spell_curseofagony.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FLASHHEAL = Assets.loadResizedImage("assets/icons/spells/spell_flashheal.png", RESIZE_SPELL)
-TEXTURE_INVENTORY_SPELL_HOLDER = Assets.loadImage("assets/inventory/spellbar/holder.png")
-TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventory/spellbar/holder_border.png", (48, 50))
-TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
+
 TEXTURE_ICON_EFFECT_DEBUFF_BURNING = Assets.loadResizedImage("assets/icons/effects/Debuff_Burning.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION = Assets.loadResizedImage("assets/icons/effects/Debuff_Corruption.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_BLEEDING = Assets.loadResizedImage("assets/icons/effects/Debuff_Bleeding.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_Immolation.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/effects/Debuff_CurseOfAgony.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_BUFF_REGEN = Assets.loadResizedImage("assets/icons/effects/Buff_Regen.png", RESIZE_EFFECT)
+
 TEXTURE_XPBAR_UI = Assets.loadImage("assets/inventory/xpbar/xpbar.png")
 TEXTURE_FRAMESTATUES_HP = Assets.loadImage("assets/framestatues/hpbar.png")
 TEXTURE_FRAMESTATUES_MANA = Assets.loadImage("assets/framestatues/manabar.png")
@@ -142,6 +150,35 @@ TEXTURE_FRAME_ENEMY_NORMAL = Assets.loadImage("assets/targetframes/enemyframe/en
 TEXTURE_FRAME_ENEMY_RARE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rare.png")
 TEXTURE_FRAME_ENEMY_RARE_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rareelite.png")
 TEXTURE_FRAME_ENEMY_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_elite.png")
+
+TEXTURE_FRAME_PORTRAIT_ANIMAL_WOLF_WHITE = Assets.loadResizedImage("assets/targetframes/portraits/animals/wolf1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_2 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear2.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_3 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear3.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_GREY_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear4.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_ZOMBIE_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear5.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_RAPTOR_BLUE = Assets.loadResizedImage("assets/targetframes/portraits/animals/raptor1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_RAT_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/rat1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_CERBERUS_WHITE = Assets.loadResizedImage("assets/targetframes/portraits/animals/cerberus1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_ANIMAL_SPIDER_BLACK_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/spider1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_HUMAN_MALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/humanmale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_HUMAN_FEMALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/humanfemale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_NIGHTELF_MALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/nightelfmale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_WORGEN_MALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/worgenmale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_SINDOREI_FEMALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/sindoreifemale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_GNOME_MALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/gnomemale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEFIAS_UNDEAD_MALE_1 = Assets.loadResizedImage("assets/targetframes/portraits/defias/undeadmale1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_SUCCUBUS_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/succubus1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_SUCCUBUS_2 = Assets.loadResizedImage("assets/targetframes/portraits/demons/succubus2.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_IMP_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/imp1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_IMP_2 = Assets.loadResizedImage("assets/targetframes/portraits/demons/imp2.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_IMP_3 = Assets.loadResizedImage("assets/targetframes/portraits/demons/imp3.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_IMP_4 = Assets.loadResizedImage("assets/targetframes/portraits/demons/imp4.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/pitlord1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_2 = Assets.loadResizedImage("assets/targetframes/portraits/demons/pitlord2.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_IMPMOTHER_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/impmother1.png", RESIZE_PORTRAIT)
+TEXTURE_FRAME_PORTRAIT_DEMON_INFERNAL_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/infernal1.png", RESIZE_PORTRAIT)
+
 
 class Drawable:
     def draw(self, screen):
@@ -202,9 +239,22 @@ class UIComponent(GameObject):
         self.height = height
         self.selected = False
         self.shouldDrawBorder = False
+        self.shouldDrawOutline = False
+        self.outlineColor = RED
+        self.outlineDrawOffset = (0, 0, 0, 0)
 
     def drawBorder(self, enabled):
         self.shouldDrawBorder = enabled
+        return self
+
+    def drawOutline(self, color, enabled):
+        if color != None:
+            self.outlineColor = color
+        self.shouldDrawOutline = enabled
+        return self
+
+    def outlineOffset(self, x1, y1, x2, y2):
+        self.outlineDrawOffset = (x1, y1, x2, y2)
         return self
 
     def collide(self, x, y):
@@ -217,9 +267,12 @@ class UIComponent(GameObject):
     def onClick(self, button, pressed):
         pass
 
+    def drawBorderOn(self, screen):
+        pygame.draw.rect(screen, self.outlineColor, (self.x + self.outlineDrawOffset[0], self.y + self.outlineDrawOffset[1], self.width - self.outlineDrawOffset[0] + self.outlineDrawOffset[2], self.height - self.outlineDrawOffset[1] + self.outlineDrawOffset[3]), 1)
+
     def draw(self, screen):
-        if self.shouldDrawBorder:
-            pygame.draw.rect(screen, RED, (self.x, self.y, self.width, self.height), 1)
+        if self.shouldDrawBorder or self.shouldDrawOutline:
+            self.drawBorderOn(screen)
 
 class UIContainerComponent(UIComponent):
     def __init__(self, x, y, width, height):
@@ -602,7 +655,7 @@ class LivingEntityStatusFrame(UIContainerComponent):
         super().tick()
         self.levelText.text(str(self.livingEntity.level), self.textColor)
 
-    def draw(self, screen):
+    def draw(self, screen): 
         super().draw(screen)
         if self.livingEntity.texture != None:
             textureWidth, textureHeight = self.livingEntity.texture.get_rect().size
@@ -610,6 +663,19 @@ class LivingEntityStatusFrame(UIContainerComponent):
         screen.blit(self.frameTexture, (self.x, self.y))
         self.nameText.draw(screen)
         self.levelText.draw(screen)
+        
+        xOffset = 0
+        yOffset = 0
+        lineCount = 0        
+        for effect in self.livingEntity.effects:
+            icon = Button(self.x + 182 + xOffset, self.y + 113 + yOffset, RESIZE_EFFECT[0], RESIZE_EFFECT[1]).texture(effect.texture).draw(screen)
+
+            xOffset += RESIZE_EFFECT[0] * 1.15
+            lineCount += 1
+            if lineCount % FRAME_EFFECT_MAX_LINE_COUNT == 0:
+                lineCount = 0
+                xOffset = 0
+                yOffset += RESIZE_EFFECT[1] * 1.15                                   
         
 class PlayerEntityStatusFrame(LivingEntityStatusFrame):
     def __init__(self, player):
