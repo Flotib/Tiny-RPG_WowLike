@@ -33,6 +33,11 @@ UI_MODULAR_BAR_INFO_TYPE_HEALTH = 0
 UI_MODULAR_BAR_INFO_TYPE_MANA = 1
 UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE = 2
 
+# COST
+COST_HEALTH = 0
+COST_MANA = 1
+COST_RAGE = 2
+
 # GAME
 WINDOW_TITLE = "RPG"
 WINDOW_WIDTH = 1280
@@ -44,6 +49,9 @@ INVENTORY_SPELL_ITEM_MAX_ROW_COUNT = 12
 INVENTORY_SPELL_ITEM_COUNT = 36
 ERROR_REMAINING_TICK = 60 * 5
 FRAME_EFFECT_MAX_LINE_COUNT = 5
+
+# GAME PLAY
+SPELL_TEST_COST = 5
 
 # Colors
 BLACK = (0, 0, 0)
@@ -256,14 +264,22 @@ class SpellItem(Item):
         self.spell = globals()[spellClass]()
         Item.__init__(self, str(spellClass), self.spell.icon)
         self.tooltip = SpellTooltip(self)
+        self.roundplay = 0
 
     def triggerUse(self):
         if player.canPlay:
             spellResult = self.spell.use(player, enemy)
             if spellResult == ACTION_SUCCESS:
+                self.roundplay = 0
                 player.hasPlay = True
             elif spellResult == ACTION_REPLAY:
-                player.hasPlay = False
+                self.roundplay += 1
+                if self.roundplay < 2:
+                    player.hasPlay = False
+                else:
+                    self.roundplay = 0
+                    player.hasPlay = True
+
             else:
                 uiManager.notifyError(SPELL_ERROR_TRADUCTION[spellResult])
 
@@ -987,6 +1003,9 @@ class LivingEntity(Entity):
         self.experience = experience
         self.maxExperience = experience
         self.baseExperience = experience
+        self.rage = 0
+        self.maxRage = 0
+        self.baseRage = 0
         self.name = name
         self.level = level
         self.effects = []
@@ -1048,10 +1067,24 @@ class Action:
     def __init__(self, icon):
         self.icon = icon
         self.tooltipData = None
-        self.cacheTooltip = False
+        self.cacheTooltip = True
+        self.cost = 0
 
     def use(self, player, target):
         return ACTION_SUCCESS
+
+    def hasEnought(self, livingEntity, costType):
+        value = 0
+        if costType == COST_HEALTH:
+            value = livingEntity.health
+        elif costType == COST_MANA:
+            value = livingEntity.mana
+        elif costType == COST_RAGE:
+            value = livingEntity.rage
+        else:
+            raise ValueError("Invalid cost type with id: " + costType)
+            
+        return self.cost <= value
 
     def getTooltipData(self):
         if self.tooltipData == None or self.cacheTooltip:
@@ -1060,7 +1093,11 @@ class Action:
         return self.tooltipData
 
     def createTooltipData(self):
-        return [ ]
+        return [
+            TitleTooltipData().text(str(self.__class__.__name__)),
+            DescriptionTooltipData().text("This action don't have any custom").color(RED),
+            DescriptionTooltipData().text("tooltip data attached.").color(RED),
+        ]
 
 
 class Attack(Action):
@@ -1071,7 +1108,6 @@ class LevelUpDebugAttack(Attack):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_TEST_ICON)
-        self.cacheTooltip = True
 
     def use(self, player, target):
         player.levelUp()
@@ -1079,8 +1115,8 @@ class LevelUpDebugAttack(Attack):
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("DEBUG ATTACK"),
-            DescriptionTooltipData().text("Level up the player"),
+            TitleTooltipData().text("[Debug] Player level up"),
+            DescriptionTooltipData().text("Level up the player").color(YELLOW_TEXT)
         ]
 
 
@@ -1096,16 +1132,8 @@ class EnemyLevelUpDebugAttack(Attack):
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Boule de feu"),
-            DescriptionTooltipData().text("Mana : 45"),
-            EmptyLineTooltipData(),
-            DescriptionTooltipData().text("Make sure that you"),
-            DescriptionTooltipData().text("are not dead yet"),
-            EmptyLineTooltipData(),
-            DescriptionTooltipData().text("Here some advice").color(RED),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 1"),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 2"),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 3"),
+            TitleTooltipData().text("[Debug] Enemy level up"),
+            DescriptionTooltipData().text("Level up the enemy").color(YELLOW_TEXT)
         ]
 
 
@@ -1119,19 +1147,38 @@ class BaseAttack(Attack):
 
         return ACTION_SUCCESS
 
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Attack"),
+        ]
+"""
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("[Debug] Enemy level up"),
+            DescriptionTooltipData().text("Mana : " + str(player.level * 4)),
+            EmptyLineTooltipData(),
+            DescriptionTooltipData().text("Make sure that you"),
+            DescriptionTooltipData().text("are not dead yet"),
+            EmptyLineTooltipData(),
+            DescriptionTooltipData().text("Here some advice").color(RED),
+            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 1"),
+            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 2"),
+            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 3"),
+        ]
+"""
+
 
 class NothingAttack(Attack):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_NOTHING)
 
-    def use(self, player, target):
-
-        damage = 0
-        target.health -= damage
-
-        return ACTION_SUCCESS
-
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("[Debug] Do nothing :/"),
+            DescriptionTooltipData().text("You have basically do nothing").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Yeah... Noob.").color(YELLOW_TEXT),
+        ]
 
 class Spell(Action):
     pass
@@ -1143,11 +1190,18 @@ class LifeTapSpell(Spell):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFETAP)
 
     def use(self, player, target):
-
         player.health -= 20
         player.offsetMana(20)
 
-        return ACTION_SUCCESS
+        return ACTION_REPLAY
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Life Tap"),
+            DescriptionTooltipData().text("Instant"),
+            DescriptionTooltipData().text("Convert 20 of your health point").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("to 20 mana point.").color(YELLOW_TEXT),
+        ]
 
 
 class AttackSpell(Spell):
@@ -1162,72 +1216,89 @@ class RenewHealingSpell(HealingSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_RENEW)
+        self.cost = 18
 
     def use(self, player, target):
-        if player.mana < 18:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 18
+        player.mana -= self.cost
         player.giveEffect(RenewRegenBuffEffect())
+        
         return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Renew Healing"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost))
+        ]
 
 
 class FlashHealHealingSpell(HealingSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_FLASHHEAL)
+        self.cost = 35
 
     def use(self, player, target):
-        if player.mana < 35:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 35
+        player.mana -= self.cost
         player.offsetHealth(18)
+
         return ACTION_REPLAY
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Flash Heal"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost))
+        ]
 
 
 class HealDrainSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFEDRAIN)
+        self.cost = 17
 
     def use(self, player, target):
-        if player.mana < 17:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.offsetMana(-17)  # MultipliÃ© par 1.15^(playerlever-1) --- 1.15 = pourcentage Ã  ajuster
+        player.mana -= self.cost
+
         damage = random.randint(12, 18)
         target.health -= damage
         player.offsetHealth(damage)
 
         return ACTION_SUCCESS
 
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Heal Drain"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Drain between 12 and 18 health point").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("from your target").color(YELLOW_TEXT)
+        ]
+
 
 class ManaDrainSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_MANADRAIN)
+        self.cost = 12
 
     def use(self, player, target):
-        if player.mana < 12:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 12
-        manaamount = random.randint(1, 5)
-        if manaamount == 1:
-            manadrainamount = 6
-        if manaamount == 2:
-            manadrainamount = 12
-        if manaamount == 3:
-            manadrainamount = 18
-        if manaamount == 4:
-            manadrainamount = 24
-        if manaamount == 5:
-            manadrainamount = 30
+        player.mana -= self.cost
 
+        amount = random.randint(1, 5) * 6
         drain = target.mana
-        if drain >= manadrainamount:
-            drain = manadrainamount
+        if drain >= amount:
+            drain = amount
 
         player.offsetMana(drain)
         target.mana -= drain
@@ -1239,17 +1310,19 @@ class FireBallSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_FIREBALL)
+        self.cost = 24
 
     def use(self, player, target):
-        if player.mana < 24:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 24  # same as lifedrain
-        damage = random.randint(22, 26)
-        target.health -= damage
+        player.mana -= self.cost
 
-        if random.randint(1, 3) == random.randint(1, 3):
+        target.health -= random.randint(22, 26)
+
+        if random.randint(0, 3) == 3:
             target.giveEffect(BurningDebuffEffect())
+        
         return ACTION_SUCCESS
 
 
@@ -1257,12 +1330,14 @@ class CorruptionSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_CORRUPTION)
+        self.cost = 35
 
     def use(self, player, target):
-        if player.mana < 15:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 15  # same as lifedrain
+        player.mana -= 35
+
         target.giveEffect(CorruptionDebuffEffect())
 
         return ACTION_SUCCESS
@@ -1272,13 +1347,16 @@ class ImmolationSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_IMMOLATION)
+        self.cost = 15
 
     def use(self, player, target):
-        if player.mana < 15:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 15  # same as lifedrain
+        player.mana -= self.cost
+
         target.health -= random.randint(6, 8)
+
         target.giveEffect(ImmolationDebuffEffect())
 
         return ACTION_SUCCESS
@@ -1288,12 +1366,14 @@ class CurseOfAgonySpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_CURSEOFAGONY)
+        self.cost = 12
 
     def use(self, player, target):
-        if player.mana < 12:
+        if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 12  # same as lifedrain
+        player.mana -= self.cost
+
         target.giveEffect(CurseOfAgonyDebuffEffect())
 
         return ACTION_SUCCESS
@@ -1494,7 +1574,7 @@ gameLogic.gameObjects.append(enemy)
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
-uiManager.components.append(EnemyEntityStatusFrame(enemy).drawBorder(True))
+uiManager.components.append(EnemyEntityStatusFrame(enemy))
 
 uiManager.notifyError("C'est une erreur")
 
