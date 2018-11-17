@@ -94,7 +94,7 @@ class Assets:
             print("Loaded font: " + str(path))
         except Exception as exception:
             print("Failed to load font \"" + str(path) + "\" with size: " + str(size) + ", error: " + str(exception))
-            font = FONT_WOW
+            font = Assets.loadFont("assets/fonts/frizquad.ttf", 20)
 
         return font
 
@@ -181,6 +181,7 @@ TEXTURE_FRAME_ENEMY_NORMAL = Assets.loadImage("assets/targetframes/enemyframe/en
 TEXTURE_FRAME_ENEMY_RARE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rare.png")
 TEXTURE_FRAME_ENEMY_RARE_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_rareelite.png")
 TEXTURE_FRAME_ENEMY_ELITE = Assets.loadImage("assets/targetframes/enemyframe/enemy_frame_elite.png")
+TEXTURE_LEVEL_SKULL = Assets.loadResizedImage("assets/targetframes/high_difficulty_level.png", (24, 24))
 
 TEXTURE_FRAME_PORTRAIT_ANIMAL_WOLF_WHITE = Assets.loadResizedImage("assets/targetframes/portraits/animals/wolf1.png", RESIZE_PORTRAIT)
 TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_1 = Assets.loadResizedImage("assets/targetframes/portraits/animals/bear1.png", RESIZE_PORTRAIT)
@@ -564,6 +565,9 @@ class ItemHolder(Button):
         if self.savedTooltip != None and self.item == None and self.savedTooltip in uiManager.tooltips:
             uiManager.tooltips.remove(self.savedTooltip)
             self.savedTooltip = None
+        
+        if self.item != None:
+            self.item.spell.tick()
 
     def draw(self, screen):
         super().draw(screen)
@@ -594,10 +598,10 @@ class SpellTooltip(Tooltip):
     def __init__(self, spell_item):
         Tooltip.__init__(self, 0, 0, 0, 0)
         self.spell_item = spell_item
-        self.tooltip_items = spell_item.spell.getTooltipData()
-        self.renderedTooltipCache = None
 
     def render_tooltip(self, screen):
+        tooltip_items = self.spell_item.spell.getTooltipData()
+
         total_height = 0
         max_width = 0
 
@@ -614,7 +618,7 @@ class SpellTooltip(Tooltip):
         """
         line_max_pixel_count = WINDOW_WIDTH * 0.25 - (TOOLTIP_MARGIN * 2)
 
-        for item in self.tooltip_items:
+        for item in tooltip_items:
             remaining_text = item.textValue
 
             while True:
@@ -882,7 +886,7 @@ class LivingEntityStatusFrame(UIContainerComponent):
         self.nameText.draw(screen)
 
         if self.textColor == LEVEL_DIFFICULTY_DEAD_SKULL:
-            screen.blit(TEXTURE_TEST, (self.levelText.x, self.levelText.y))
+            screen.blit(TEXTURE_LEVEL_SKULL, (self.levelText.x + 1, self.levelText.y - 2))
         else:
             self.levelText.draw(screen)
 
@@ -1120,7 +1124,7 @@ class Enemy(LivingEntity):
     def __init__(self, x, y, health, level, attack):
         LivingEntity.__init__(self, x, y, health, 0, "Enemy", level, 0)
         self.attackValue = attack
-        self.texture = TEXTURE_PLAYER
+        self.texture = TEXTURE_FRAME_PORTRAIT_DEMON_IMP_1
 
     def attack(self, player):
         player.health -= self.attackValue * self.level
@@ -1130,14 +1134,19 @@ class Enemy(LivingEntity):
     #    screen.blit(FONT.render(str("self.name"), 1, (255,255,255)), (self.x, self.y - 10))
 
 
-class Action:
+class Action(Tickable):
 
     def __init__(self, icon):
         self.icon = icon
         self.tooltipData = None
         self.cacheTooltip = True
         self.cost = 0
-
+        self.mindamage = 0
+        self.maxdamage = 0
+        self.minhealing = 0
+        self.maxhealing = 0
+        self.amount = 0
+        
     def use(self, player, target):
         return ACTION_SUCCESS
 
@@ -1155,7 +1164,7 @@ class Action:
         return self.cost <= value
 
     def getTooltipData(self):
-        if self.tooltipData == None or self.cacheTooltip:
+        if self.tooltipData == None or not self.cacheTooltip:
             self.tooltipData = self.createTooltipData()
 
         return self.tooltipData
@@ -1184,7 +1193,6 @@ class LevelUpDebugAttack(Attack):
         return [
             TitleTooltipData().text("[Debug] Player level up"),
             DescriptionTooltipData().text("Level up the player").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("abcdefghi jklmnopqrstuvwxy zabcdefghijklm nopqrstuvwxyz").color(RED)
         ]
 
 
@@ -1218,7 +1226,6 @@ class BaseAttack(Attack):
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Attack"),
-            DescriptionTooltipData().text("Do between 3 and 5 damage.").color(YELLOW_TEXT),
         ]
 
 
@@ -1235,7 +1242,7 @@ class NothingAttack(Attack):
         ]
 
 
-class Spell(Action):
+class Spell(Action):    
     pass
 
 
@@ -1243,6 +1250,7 @@ class LifeTapSpell(Spell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFETAP)
+        self.amount = 20  # Fonction liee au lvl du joueur
 
     def use(self, player, target):
         player.health -= 20
@@ -1254,7 +1262,7 @@ class LifeTapSpell(Spell):
         return [
             TitleTooltipData().text("Life Tap"),
             DescriptionTooltipData().text("Instant"),
-            DescriptionTooltipData().text("Convert 20 of your health point to 20 mana point.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Converts 20 health into 20 mana.").color(YELLOW_TEXT),
         ]
 
 
@@ -1270,7 +1278,9 @@ class RenewHealingSpell(HealingSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_RENEW)
-        self.cost = 18
+        self.cost = 30
+        self.amount = 3  # TODO: Fonction mathematiques a ajouter
+        self.maxhealing = self.amount * 15
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
@@ -1278,15 +1288,15 @@ class RenewHealingSpell(HealingSpell):
 
         player.mana -= self.cost
 
-        player.giveEffect(RenewRegenBuffEffect())
+        player.giveEffect(RenewRegenBuffEffect(self))
 
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Renew Healing"),
+            TitleTooltipData().text("Renew"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Give yourself a regeneration effect.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Heals you of " + str(self.maxhealing) + " damage over 15sec.").color(YELLOW_TEXT)
         ]
 
 
@@ -1310,7 +1320,8 @@ class FlashHealHealingSpell(HealingSpell):
         return [
             TitleTooltipData().text("Flash Heal"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Give yourself 18 health point.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Instant"),
+            DescriptionTooltipData().text("Heals you for 54 to 67.").color(YELLOW_TEXT)
         ]
 
 
@@ -1319,14 +1330,24 @@ class HealDrainSpell(AttackSpell):
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFEDRAIN)
         self.cost = 17
+        self.mindamage = 3
+        self.maxdamage = 15
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.cost = 17  # TODO: Ajouter la vraie fonction plus tard
+        self.mindamage = 3  # TODO: Ajouter la vraie fonction plus tard
+        self.maxdamage = 15  # TODO: Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
-
-        damage = random.randint(12, 18)
+        rand = random.randint(1, 7)
+        if rand > 5:
+            rand = 5
+        damage = 3 * rand
         target.health -= damage
         player.offsetHealth(damage)
 
@@ -1336,7 +1357,7 @@ class HealDrainSpell(AttackSpell):
         return [
             TitleTooltipData().text("Heal Drain"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Drain between 12 and 18 health point from your target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Transfers between " + str(self.mindamage) + " and " + str(self.maxdamage) + " health every second from the target to the caster.").color(YELLOW_TEXT),
         ]
 
 
@@ -1567,6 +1588,11 @@ class TimedEffect(BaseEffect):
     def __init__(self, texture, remaingTime):
         BaseEffect.__init__(self, texture)
         self.remaingTime = remaingTime
+        self.mindamage = 0
+        self.maxdamage = 0
+        self.minhealing = 0
+        self.maxhealing = 0
+        self.amount = 0
 
     def finishExecute(self):
         self.remaingTime -= 1
@@ -1580,11 +1606,12 @@ class BuffEffect(TimedEffect):
 
 class RenewRegenBuffEffect(BuffEffect):
 
-    def __init__(self):
-        BuffEffect.__init__(self, TEXTURE_ICON_EFFECT_BUFF_RENEW, 10)
+    def __init__(self, renewHealingSpell):
+        BuffEffect.__init__(self, TEXTURE_ICON_EFFECT_BUFF_RENEW, 15)
+        self.amount = renewHealingSpell.amount
 
     def execute(self, livingEntity):
-        livingEntity.offsetHealth(3)
+        livingEntity.offsetHealth(self.amount)
 
         self.finishExecute()
         return True
@@ -1663,13 +1690,13 @@ gameLogic.gameObjects.append(enemy)
 
 # uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 # uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
-uiManager.components.append(WindowBackground(TEXTURE_BACKGROUND_TEST))
+# uiManager.components.append(WindowBackground(TEXTURE_BACKGROUND_TEST))
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
 uiManager.components.append(EnemyEntityStatusFrame(enemy))
 
-uiManager.notifyError("C'est une erreur")
+uiManager.notifyError("")
 
 
 def loop():
