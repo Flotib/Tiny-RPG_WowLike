@@ -146,6 +146,8 @@ TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY = Assets.loadResizedImage("assets/inventory
 TEXTURE_UI_GRYPHON = Assets.loadImage("assets/inventory/spellbar/gryphonspelldecoration.png")
 TEXTURE_PLAYER = Assets.loadImage("assets/player/human_male.png")
 
+TEXTURE_BACKGROUND_TEST = Assets.loadImage("assets/background/test.png")
+
 TEXTURE_INVENTORY_SPELL_HOLDER = Assets.loadImage("assets/inventory/spellbar/holder.png")
 TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventory/spellbar/holder_border.png", (48, 50))
 TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
@@ -380,6 +382,23 @@ class Background(UIComponent):
         screen.blit(self.texture, (self.x, self.y))
 
 
+class WindowBackground(UIComponent):
+
+    def __init__(self, texture):
+        UIComponent.__init__(self, 0, 0, 0, 0)
+        self.originalTexture = texture
+        self.texture = None
+        self.onScreenResize(-1, -1)
+
+    def onScreenResize(self, newScreenWidth, newScreenHeight):
+        self.width = WINDOW_WIDTH
+        self.height = WINDOW_HEIGHT
+        self.texture = pygame.transform.scale(self.originalTexture, (self.width, self.height))
+
+    def draw(self, screen):
+        screen.blit(self.texture, (self.x, self.y))
+
+
 class Inventory(UIContainerComponent):
 
     def __init__(self, x, y, width, height, backgroundTexture):
@@ -535,13 +554,13 @@ class ItemHolder(Button):
         if self.item != None and self.item.tooltip != None:
             if self.savedTooltip != self.item.tooltip:
                 self.savedTooltip = self.item.tooltip
-            
+
             if self.item.tooltip in uiManager.tooltips:
                 uiManager.tooltips.remove(self.item.tooltip)
             self.item.tooltip.updatePosition(uiManager.mouseX, uiManager.mouseY)
             if self.selected:
                 uiManager.tooltips.append(self.item.tooltip)
-        
+
         if self.savedTooltip != None and self.item == None and self.savedTooltip in uiManager.tooltips:
             uiManager.tooltips.remove(self.savedTooltip)
             self.savedTooltip = None
@@ -1004,6 +1023,8 @@ class UIManager(Drawable, Tickable):
             component.draw(screen)
         for tooltip in self.tooltips:
             tooltip.draw(screen)
+
+        Text(20, 20, "FPS: " + str(clock.get_fps()), RED).create().draw(screen)
 
     def tick(self):
         self.errorRemainingTick -= 1
@@ -1642,7 +1663,7 @@ gameLogic.gameObjects.append(enemy)
 
 # uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 # uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
-# uiManager.components.append(Background(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, TEXTURE_ICON_EFFECT_DEBUFF_BURNING))
+uiManager.components.append(WindowBackground(TEXTURE_BACKGROUND_TEST))
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
