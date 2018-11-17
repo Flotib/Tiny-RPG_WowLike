@@ -1,17 +1,17 @@
-import pygame
 import os
+import random
 import sys
 import time
-import random
+
+import pygame
 
 # the Pygame docs say size(text) -> (width, height)
-
 # PYGAME
 MOUSE_LEFT = 1
 MOUSE_MIDDLE = 2
 MOUSE_RIGHT = 3
 
-# SPELL ERROR
+# ACTION RESPONSE
 ACTION_REPLAY = -2
 ACTION_SUCCESS = -1
 SPELL_ERROR_REASON_NOT_ENOUGHT_MANA = 0
@@ -53,7 +53,7 @@ FRAME_EFFECT_MAX_LINE_COUNT = 5
 # GAME PLAY
 SPELL_TEST_COST = 5
 
-# Colors
+# COLORS
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 LIGHT_GREY = (245, 245, 245)
@@ -75,6 +75,7 @@ LEVEL_DIFFICULTY_EASY = (47, 131, 46)
 LEVEL_DIFFICULTY_NORMAL = (201, 201, 8)
 LEVEL_DIFFICULTY_MEDIUM = (224, 114, 57)
 LEVEL_DIFFICULTY_HARD = (255, 26, 26)
+LEVEL_DIFFICULTY_DEAD_SKULL = 0x0
 
 pygame.init()
 
@@ -119,7 +120,8 @@ class Assets:
         return image
 
 
-# Fonts
+# # Loading Fonts
+print("Loading fonts...")
 # FONT = Assets.loadFont(None, 30)
 FONT_WOW = Assets.loadFont("assets/fonts/frizquad.ttf", 20)
 FONT_TOOLTIP_TITLE = Assets.loadFont("assets/fonts/frizquad.ttf", 20)
@@ -129,7 +131,8 @@ FONT_WOW_VERY_TINY = Assets.loadFont("assets/fonts/frizquad.ttf", 10)
 FONT_ARIALN = Assets.loadFont("assets/fonts/arialn.ttf", 22)
 FONT_ARIALN_TINY = Assets.loadFont("assets/fonts/arialn.ttf", 15)
 
-# loading textures
+# # Loading Textures
+print("Loading textues...")
 RESIZE_SPELL = (50, 50)
 RESIZE_EFFECT = (35, 35)
 RESIZE_PORTRAIT = (94, 94)
@@ -512,6 +515,7 @@ class ItemHolder(Button):
     def __init__(self, x, y, width, height):
         Button.__init__(self, x, y, width, height)
         self.item = None
+        self.savedTooltip = None
         self.texture(TEXTURE_INVENTORY_SPELL_HOLDER)
         self.maintained = False
 
@@ -522,32 +526,25 @@ class ItemHolder(Button):
                 self.item.triggerUse()
 
         elif button == MOUSE_MIDDLE and pressed:
-            if self.item == None:
-                rand = random.randint(0, 3)
-                print(str(rand))
-                if rand == 0:
-                    self.item = SpellItem("FireBallSpell")
-                elif rand == 1:
-                    self.item = SpellItem("HealDrainSpell")
-                elif rand == 2:
-                    self.item = SpellItem("NothingAttack")
-                elif rand == 3:
-                    self.item = SpellItem("BaseAttack")
-
-                # self.item = Item("EpÃ©e magique", TEXTURE_ICON_SPELL_LIFEDRAIN)
-            else:
-                self.item = None
+            self.item = None
 
     def tick(self):
         if not self.selected and self.maintained:
             self.maintained = False
 
         if self.item != None and self.item.tooltip != None:
+            if self.savedTooltip != self.item.tooltip:
+                self.savedTooltip = self.item.tooltip
+            
             if self.item.tooltip in uiManager.tooltips:
                 uiManager.tooltips.remove(self.item.tooltip)
             self.item.tooltip.updatePosition(uiManager.mouseX, uiManager.mouseY)
             if self.selected:
                 uiManager.tooltips.append(self.item.tooltip)
+        
+        if self.savedTooltip != None and self.item == None and self.savedTooltip in uiManager.tooltips:
+            uiManager.tooltips.remove(self.savedTooltip)
+            self.savedTooltip = None
 
     def draw(self, screen):
         super().draw(screen)
@@ -608,16 +605,16 @@ class SpellTooltip(Tooltip):
                 max_index = len(cut) - 1
 
                 while item.textFont.size(phrase + cut[index])[0] < line_max_pixel_count and index < max_index:
-                    #print("----------")
-                    #print("size: " + str(item.textFont.size(phrase + cut[index])[0]))
-                    #print("index: " + str(index))
-                    #print("cut length: " + str(len(cut)))
-                    #print("cut[index]: " + cut[index])
-                    #print("index < len(cut): " + str(index < len(cut)))
+                    # print("----------")
+                    # print("size: " + str(item.textFont.size(phrase + cut[index])[0]))
+                    # print("index: " + str(index))
+                    # print("cut length: " + str(len(cut)))
+                    # print("cut[index]: " + cut[index])
+                    # print("index < len(cut): " + str(index < len(cut)))
 
                     index += 1
                     phrase += cut[index] + " "
-                    #print("now phrase:" + str(phrase))
+                    # print("now phrase:" + str(phrase))
                 phrase = phrase[:-1]
 
                 remaining_text = None
@@ -627,7 +624,7 @@ class SpellTooltip(Tooltip):
                         remaining_text += cut[i] + " "
 
                     remaining_text = remaining_text[:-1]
-                    #print("remaining_text" + remaining_text)
+                    # print("remaining_text" + remaining_text)
 
                 text = item.textFont.render(phrase, True, item.textColor)
                 size = item.textFont.size(phrase)
@@ -643,7 +640,7 @@ class SpellTooltip(Tooltip):
 
         self.x = WINDOW_WIDTH - 25 - max_width
         self.y = WINDOW_HEIGHT * 0.95 - total_height
-        
+
         rectangle = (self.x + 8 - TOOLTIP_MARGIN, self.y - 25 - TOOLTIP_MARGIN, max_width + 8 + TOOLTIP_MARGIN, total_height + 8 + TOOLTIP_MARGIN)
         pygame.draw.rect(screen, DARK_BLUE_BACK, rectangle)
         pygame.draw.rect(screen, WHITE, rectangle, 1)
@@ -653,6 +650,7 @@ class SpellTooltip(Tooltip):
 
     def draw(self, screen):
         self.render_tooltip(screen)
+
 
 class ItemTooltip(Tooltip):
 
@@ -852,7 +850,9 @@ class LivingEntityStatusFrame(UIContainerComponent):
 
     def tick(self):
         super().tick()
-        self.levelText.text(str(self.livingEntity.level), self.textColor)
+
+        if self.textColor != LEVEL_DIFFICULTY_DEAD_SKULL:
+            self.levelText.text(str(self.livingEntity.level), self.textColor)
 
     def draw(self, screen):
         super().draw(screen)
@@ -861,13 +861,17 @@ class LivingEntityStatusFrame(UIContainerComponent):
             screen.blit(self.livingEntity.texture, (self.x + self.portraitOffsetY + ((94 - textureWidth) / 2), self.y + 28 + ((94 - textureHeight) / 2)))
         screen.blit(self.frameTexture, (self.x, self.y))
         self.nameText.draw(screen)
-        self.levelText.draw(screen)
+
+        if self.textColor == LEVEL_DIFFICULTY_DEAD_SKULL:
+            screen.blit(TEXTURE_TEST, (self.levelText.x, self.levelText.y))
+        else:
+            self.levelText.draw(screen)
 
         xOffset = 0
         yOffset = 0
         lineCount = 0
         for effect in self.livingEntity.effects:
-            icon = Button(self.x + self.iconsEffectOffset[0] + xOffset, self.y + self.iconsEffectOffset[1] + yOffset, RESIZE_EFFECT[0], RESIZE_EFFECT[1]).texture(effect.texture).draw(screen)
+            Button(self.x + self.iconsEffectOffset[0] + xOffset, self.y + self.iconsEffectOffset[1] + yOffset, RESIZE_EFFECT[0], RESIZE_EFFECT[1]).texture(effect.texture).draw(screen)
 
             xOffset += RESIZE_EFFECT[0] * 1.15
             lineCount += 1
@@ -938,8 +942,7 @@ class EnemyEntityStatusFrame(LivingEntityStatusFrame):
         elif player.level + 5 <= self.livingEntity.level and player.level + 9 >= self.livingEntity.level:
             self.textColor = LEVEL_DIFFICULTY_HARD
         elif player.level + 10 <= self.livingEntity.level:
-            self.textColor = LEVEL_DIFFICULTY_HARD
-            pass  # TODO Make an image support
+            self.textColor = LEVEL_DIFFICULTY_DEAD_SKULL
 
     def onScreenResize(self, newScreenWidth, newScreenHeight):
         self.x = int(WINDOW_WIDTH * 0.99) - self.width
