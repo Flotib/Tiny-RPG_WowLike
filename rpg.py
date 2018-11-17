@@ -209,8 +209,8 @@ TEXTURE_FRAME_PORTRAIT_DEMON_INFERNAL_1 = Assets.loadResizedImage("assets/target
 class Maths:
 
     @staticmethod
-    def between(number, min, max):
-        return number >= min and number <= max
+    def between(number, min_value, max_value):
+        return number >= min_value and number <= max_value
 
 
 class Drawable:
@@ -251,7 +251,7 @@ class Item(Drawable):
         self.name = name
         self.texture = texture
         self.tooltip = ItemTooltip(self)
-        self.tooltip.data.append(TooltipData().text(str(name)).color(Q_UNCOMMON))
+        self.tooltip.tooltip_items.append(TooltipData().text(str(name)).color(Q_UNCOMMON))
 
     def attachTooltip(self, newTooltip):
         self.tooltip = newTooltip
@@ -566,7 +566,7 @@ class Tooltip(UIComponent):
 
     def __init__(self, x, y, width, height):
         UIComponent.__init__(self, x, y, width, height)
-        self.data = []
+        self.tooltip_items = []
         self.displayed = False
 
     def updatePosition(self, x, y):
@@ -578,37 +578,81 @@ class SpellTooltip(Tooltip):
     def __init__(self, spell_item):
         Tooltip.__init__(self, 0, 0, 0, 0)
         self.spell_item = spell_item
-        self.data = spell_item.spell.getTooltipData()
+        self.tooltip_items = spell_item.spell.getTooltipData()
+        self.renderedTooltipCache = None
 
-    def draw(self, screen):
-        self.x = WINDOW_WIDTH * 0.8
-        self.y = WINDOW_HEIGHT * 0.8
-
-        totalHeight = 0
-        maxWidth = 0
+    def render_tooltip(self, screen):
+        total_height = 0
+        max_width = 0
 
         texts = []
-        textsPositions = []
+        texts_positions = []
 
-        for tooltipData in self.data:
-            text = tooltipData.textFont.render(tooltipData.textValue, True, tooltipData.textColor)
-            size = tooltipData.textFont.size(tooltipData.textValue)
-            texts.append(text)
-            textsPositions.append(totalHeight)
-            totalHeight += size[1]
-            if size[0] > maxWidth:
-                maxWidth = size[0]
+        """
+        52 char ~= 485 px [contained] ->> - MARGIN * 2 = 445
+        -> 1 char ~= 9.32 px
+        
+        available spaces:
+            - for default window size: 0.25% = 327 px [contained] ->> - MARGIN * 2 = 287
+            - for maximized window size: 0.33% = 646 px [contained] ->> - MARGIN * 2 = 606
+        """
+        line_max_pixel_count = WINDOW_WIDTH * 0.25 - (TOOLTIP_MARGIN * 2)
 
-        self.x = WINDOW_WIDTH - 25 - maxWidth
-        self.y = WINDOW_HEIGHT * 0.95 - totalHeight
+        for item in self.tooltip_items:
+            remaining_text = item.textValue
 
-        rectangle = (self.x + 8 - TOOLTIP_MARGIN, self.y - 25 - TOOLTIP_MARGIN, maxWidth + 8 + TOOLTIP_MARGIN, totalHeight + 8 + TOOLTIP_MARGIN)
+            while True:
+                cut = remaining_text.split()
+                phrase = cut[0] + " "
+                index = 0
+                max_index = len(cut) - 1
+
+                while item.textFont.size(phrase + cut[index])[0] < line_max_pixel_count and index < max_index:
+                    #print("----------")
+                    #print("size: " + str(item.textFont.size(phrase + cut[index])[0]))
+                    #print("index: " + str(index))
+                    #print("cut length: " + str(len(cut)))
+                    #print("cut[index]: " + cut[index])
+                    #print("index < len(cut): " + str(index < len(cut)))
+
+                    index += 1
+                    phrase += cut[index] + " "
+                    #print("now phrase:" + str(phrase))
+                phrase = phrase[:-1]
+
+                remaining_text = None
+                if index < max_index:
+                    remaining_text = ""
+                    for i in range(index + 1, len(cut)):
+                        remaining_text += cut[i] + " "
+
+                    remaining_text = remaining_text[:-1]
+                    #print("remaining_text" + remaining_text)
+
+                text = item.textFont.render(phrase, True, item.textColor)
+                size = item.textFont.size(phrase)
+
+                texts.append(text)
+                texts_positions.append(total_height)
+                total_height += size[1]
+                if size[0] > max_width:
+                    max_width = size[0]
+
+                if remaining_text == None:
+                    break
+
+        self.x = WINDOW_WIDTH - 25 - max_width
+        self.y = WINDOW_HEIGHT * 0.95 - total_height
+        
+        rectangle = (self.x + 8 - TOOLTIP_MARGIN, self.y - 25 - TOOLTIP_MARGIN, max_width + 8 + TOOLTIP_MARGIN, total_height + 8 + TOOLTIP_MARGIN)
         pygame.draw.rect(screen, DARK_BLUE_BACK, rectangle)
         pygame.draw.rect(screen, WHITE, rectangle, 1)
 
         for i in range(0, len(texts)):
-            screen.blit(texts[i], (self.x + 4, self.y - 29 + textsPositions[i]))
+            screen.blit(texts[i], (self.x + 4, self.y - 29 + texts_positions[i]))
 
+    def draw(self, screen):
+        self.render_tooltip(screen)
 
 class ItemTooltip(Tooltip):
 
@@ -627,7 +671,7 @@ class ItemTooltip(Tooltip):
         texts = []
         textsPositions = []
 
-        for tooltipData in self.data:
+        for tooltipData in self.tooltip_items:
             text = tooltipData.textFont.render(tooltipData.dataText, True, tooltipData.dataColor)
             size = tooltipData.textFont.size(tooltipData.dataText)
             texts.append(text)
@@ -1083,7 +1127,7 @@ class Action:
             value = livingEntity.rage
         else:
             raise ValueError("Invalid cost type with id: " + costType)
-            
+
         return self.cost <= value
 
     def getTooltipData(self):
@@ -1095,8 +1139,7 @@ class Action:
     def createTooltipData(self):
         return [
             TitleTooltipData().text(str(self.__class__.__name__)),
-            DescriptionTooltipData().text("This action don't have any custom").color(RED),
-            DescriptionTooltipData().text("tooltip data attached.").color(RED),
+            DescriptionTooltipData().text("This action don't have any custom tooltip tooltip_items attached.").color(RED),
         ]
 
 
@@ -1116,7 +1159,8 @@ class LevelUpDebugAttack(Attack):
     def createTooltipData(self):
         return [
             TitleTooltipData().text("[Debug] Player level up"),
-            DescriptionTooltipData().text("Level up the player").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Level up the player").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("abcdefghi jklmnopqrstuvwxy zabcdefghijklm nopqrstuvwxyz").color(RED)
         ]
 
 
@@ -1150,22 +1194,8 @@ class BaseAttack(Attack):
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Attack"),
+            DescriptionTooltipData().text("Do between 3 and 5 damage.").color(YELLOW_TEXT),
         ]
-"""
-    def createTooltipData(self):
-        return [
-            TitleTooltipData().text("[Debug] Enemy level up"),
-            DescriptionTooltipData().text("Mana : " + str(player.level * 4)),
-            EmptyLineTooltipData(),
-            DescriptionTooltipData().text("Make sure that you"),
-            DescriptionTooltipData().text("are not dead yet"),
-            EmptyLineTooltipData(),
-            DescriptionTooltipData().text("Here some advice").color(RED),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 1"),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 2"),
-            DescriptionTooltipData().text(" - Lorem ip caca pi pi protu 3"),
-        ]
-"""
 
 
 class NothingAttack(Attack):
@@ -1179,6 +1209,7 @@ class NothingAttack(Attack):
             DescriptionTooltipData().text("You have basically do nothing").color(YELLOW_TEXT),
             DescriptionTooltipData().text("Yeah... Noob.").color(YELLOW_TEXT),
         ]
+
 
 class Spell(Action):
     pass
@@ -1199,8 +1230,7 @@ class LifeTapSpell(Spell):
         return [
             TitleTooltipData().text("Life Tap"),
             DescriptionTooltipData().text("Instant"),
-            DescriptionTooltipData().text("Convert 20 of your health point").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("to 20 mana point.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Convert 20 of your health point to 20 mana point.").color(YELLOW_TEXT),
         ]
 
 
@@ -1223,14 +1253,16 @@ class RenewHealingSpell(HealingSpell):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
+
         player.giveEffect(RenewRegenBuffEffect())
-        
+
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Renew Healing"),
-            DescriptionTooltipData().text("Mana : " + str(self.cost))
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Give yourself a regeneration effect.").color(YELLOW_TEXT)
         ]
 
 
@@ -1245,6 +1277,7 @@ class FlashHealHealingSpell(HealingSpell):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
+
         player.offsetHealth(18)
 
         return ACTION_REPLAY
@@ -1252,7 +1285,8 @@ class FlashHealHealingSpell(HealingSpell):
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Flash Heal"),
-            DescriptionTooltipData().text("Mana : " + str(self.cost))
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Give yourself 18 health point.").color(YELLOW_TEXT)
         ]
 
 
@@ -1278,8 +1312,7 @@ class HealDrainSpell(AttackSpell):
         return [
             TitleTooltipData().text("Heal Drain"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Drain between 12 and 18 health point").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("from your target").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Drain between 12 and 18 health point from your target.").color(YELLOW_TEXT)
         ]
 
 
@@ -1305,6 +1338,13 @@ class ManaDrainSpell(AttackSpell):
 
         return ACTION_SUCCESS
 
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Mana Drain"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Drain between 6 and 30 mana point from your target.").color(YELLOW_TEXT)
+        ]
+
 
 class FireBallSpell(AttackSpell):
 
@@ -1322,8 +1362,16 @@ class FireBallSpell(AttackSpell):
 
         if random.randint(0, 3) == 3:
             target.giveEffect(BurningDebuffEffect())
-        
+
         return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Fire Ball"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Throw a fireball and do between 22 and 26 damage.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("You have 1/4 chance to set the target on fire.").color(YELLOW_TEXT)
+        ]
 
 
 class CorruptionSpell(AttackSpell):
@@ -1341,6 +1389,13 @@ class CorruptionSpell(AttackSpell):
         target.giveEffect(CorruptionDebuffEffect())
 
         return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Corruption"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Give corruption effect to the target.").color(YELLOW_TEXT)
+        ]
 
 
 class ImmolationSpell(AttackSpell):
@@ -1361,6 +1416,13 @@ class ImmolationSpell(AttackSpell):
 
         return ACTION_SUCCESS
 
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Immolation"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Do between 6 and 8 damage and give immolation effect to the target.").color(YELLOW_TEXT)
+        ]
+
 
 class CurseOfAgonySpell(AttackSpell):
 
@@ -1377,6 +1439,13 @@ class CurseOfAgonySpell(AttackSpell):
         target.giveEffect(CurseOfAgonyDebuffEffect())
 
         return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Curse Of Agony"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Give curse of agony effect to the target.").color(YELLOW_TEXT)
+        ]
 
 
 class GameLogic(Drawable, Tickable):
