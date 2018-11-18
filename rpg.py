@@ -277,7 +277,7 @@ class SpellItem(Item):
 
     def triggerUse(self):
         if player.canPlay:
-            spellResult = self.spell.use(player, enemy)
+            spellResult = self.spell.use(player, player.target)
             if spellResult == ACTION_SUCCESS:
                 self.roundplay = 0
                 player.hasPlay = True
@@ -380,27 +380,49 @@ class Background(UIComponent):
 
     def __init__(self, x, y, width, height, texture):
         UIComponent.__init__(self, x, y, width, height)
-        self.texture = pygame.transform.scale(texture, (self.width, self.height))
+        self.originalTexture = None
+        self.texture = None
+        
+        if texture != None:
+            self.texture = pygame.transform.scale(texture, (self.width, self.height))
+    
+    
+    def update(self, newOriginalTexture):
+        if newOriginalTexture != None:
+            self.originalTexture = newOriginalTexture
+        
+        return self
 
     def draw(self, screen):
-        screen.blit(self.texture, (self.x, self.y))
+        if self.texture != None:
+            screen.blit(self.texture, (self.x, self.y))
 
 
-class WindowBackground(UIComponent):
+class WindowBackground(Background):
 
     def __init__(self, texture):
-        UIComponent.__init__(self, 0, 0, 0, 0)
-        self.originalTexture = texture
+        Background.__init__(self, 0, 0, 0, 0, texture)
+        self.originalTexture = None
         self.texture = None
+        self.update(texture)
+    
+    def update(self, newOriginalTexture):
+        super().update(newOriginalTexture)
+        
         self.onScreenResize(-1, -1)
+        
+        return self
 
     def onScreenResize(self, newScreenWidth, newScreenHeight):
         self.width = WINDOW_WIDTH
         self.height = WINDOW_HEIGHT
-        self.texture = pygame.transform.scale(self.originalTexture, (self.width, self.height))
+        
+        if self.originalTexture != None:
+            self.texture = pygame.transform.scale(self.originalTexture, (self.width, self.height))
 
     def draw(self, screen):
-        screen.blit(self.texture, (self.x, self.y))
+        if self.texture != None:
+            screen.blit(self.texture, (self.x, self.y))
 
 
 class Inventory(UIContainerComponent):
@@ -992,13 +1014,13 @@ class UIManager(Drawable, Tickable):
 
     def __init__(self):
         self.components = []
-        self.objects = []
         self.tooltips = []
         self.mouseX = -1
         self.mouseY = -1
         self.errorText = None
         self.errorTextComponent = None
         self.errorRemainingTick = 0
+        self.enemyFrame = None
 
     def notifyError(self, error):
         self.errorText = error
@@ -1039,9 +1061,7 @@ class UIManager(Drawable, Tickable):
         self.errorRemainingTick -= 1
         if self.errorRemainingTick <= 0:
             self.errorTextComponent = None
-
-        for gameObject in self.objects:
-            gameObject.tick()
+            
         for component in self.components:
             if self.mouseX != -1 and self.mouseY != -1:
                 component.collide(self.mouseX, self.mouseY)
@@ -1118,9 +1138,14 @@ class Player(LivingEntity):
         self.texture = TEXTURE_TEST_PORTRAIT
         self.canPlay = False
         self.hasPlay = False
+        self.target = None
 
     def tick(self):
-        if self.experience >= (self.level + 1) * 50:
+        self.maxHealth = int(self.baseHealth * self.level)
+        self.maxMana = int(self.baseMana * self.level)
+        self.maxExperience = int((self.level + 1) * 50)
+        
+        if self.experience >= self.maxExperience:
             self.levelUp()
 
 
@@ -1231,13 +1256,16 @@ class BaseAttack(Attack):
         Action.__init__(self, TEXTURE_ICON_SPELL_BASEATTACK)
 
     def use(self, player, target):
-        target.health -= random.randint(3, 5)
+        target.health -= random.randint(3 * player.level, 5 * player.level)
+        player.offsetMana(random.randint(player.level, 3 * player.level))
 
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Attack"),
+            DescriptionTooltipData().text("Get a little bit of mana while you are not using it.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Using it everytime is exhausting right...?").color(YELLOW_TEXT)
         ]
 
 
@@ -1553,6 +1581,8 @@ class GameLogic(Drawable, Tickable):
         self.disabledEntitiesForRound = []
 
     def handle(self):
+        self.tick()
+        
         if self.hasPreviousRoundEnd:
             self.hasPreviousRoundEnd = False
 
@@ -1577,6 +1607,19 @@ class GameLogic(Drawable, Tickable):
                     self.hasPreviousRoundEnd = True
 
         self.removeDeadEntities()
+        
+        
+    
+        if self.player.target.isDead():
+            oldEnemy = self.player.target
+            
+            self.player.experience += oldEnemy.level * 4
+            self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1.2), int(oldEnemy.level + 1), int(oldEnemy.attackValue * 2))
+            self.gameObjects.append(player.target)
+        
+            uiManager.components.remove(uiManager.enemyFrame)
+            uiManager.enemyFrame = EnemyEntityStatusFrame(self.player.target)
+            uiManager.components.append(uiManager.enemyFrame)
 
     def handlePlayerRound(self, player):
         player.canPlay = True
@@ -1604,6 +1647,10 @@ class GameLogic(Drawable, Tickable):
         for entity in self.remainingEnemyRound:
             if entity.isDead():
                 self.remainingEnemyRound.remove(entity)
+
+    def tick(self):
+        for gameObject in self.gameObjects:
+            gameObject.tick()
 
     def draw(self, screen):
         for gameObject in self.gameObjects:
@@ -1782,10 +1829,10 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
 uiManager = UIManager()
 player = Player(75, 600, 100 , 100, 1, "Hero")
 gameLogic = GameLogic(player)
-enemy = Enemy(50, 50, 100, 1, 5)
+player.target = Enemy(50, 50, 100, 1, 1)
 
 gameLogic.gameObjects.append(player)
-gameLogic.gameObjects.append(enemy)
+gameLogic.gameObjects.append(player.target)
 
 # uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 # uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
@@ -1793,7 +1840,9 @@ gameLogic.gameObjects.append(enemy)
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
-uiManager.components.append(EnemyEntityStatusFrame(enemy))
+
+uiManager.enemyFrame = EnemyEntityStatusFrame(player.target)
+uiManager.components.append(uiManager.enemyFrame)
 
 # uiManager.notifyError("Ceci est une erreur")
 
@@ -1808,11 +1857,11 @@ def loop():
 
 
 def afterLoop():
-    if not enemy.isDead():
-        Text(50, 350, "Enemy: " + str(enemy.health) + "/" + str(enemy.maxHealth), RED).create().draw(screen)
-        Text(200, 350, "mana: " + str(enemy.mana) + "/" + str(enemy.maxMana), WHITE).create().draw(screen)
+    if not player.target.isDead():
+        Text(50, 350, "Enemy: " + str(player.target.health) + "/" + str(player.target.maxHealth), RED).create().draw(screen)
+        Text(200, 350, "mana: " + str(player.target.mana) + "/" + str(player.target.maxMana), WHITE).create().draw(screen)
     else:
-        Text(50, 350, "Enemy is dead (actual: " + str(enemy.health) + ")", RED).create().draw(screen)
+        Text(50, 350, "Enemy is dead (actual: " + str(player.target.health) + ")", RED).create().draw(screen)
 
     if not player.isDead():
         Text(50, 400, "Player: " + str(player.health) + "/" + str(player.maxHealth), RED).create().draw(screen)
