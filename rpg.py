@@ -2,9 +2,7 @@ import os
 import random
 import sys
 import time
-
 import pygame
-from numpy import isin
 
 # the Pygame docs say size(text) -> (width, height)
 # PYGAME
@@ -1122,7 +1120,6 @@ class LivingEntity(Entity):
         self.baseMana = mana
         self.experience = experience
         self.maxExperience = experience
-        self.baseExperience = experience
         self.rage = 0
         self.maxRage = 0
         self.baseRage = 0
@@ -1166,9 +1163,21 @@ class Player(LivingEntity):
     def tick(self):
         self.maxHealth = int(self.baseHealth * self.level)
         self.maxMana = int(self.baseMana * self.level)
-        self.maxExperience = int((self.level + 1) * 50)
+        if player.level <= 28:
+            self.Diff = 0
+        elif player.level == 29:
+            self.Diff = 1
+        elif player.level == 30:
+            self.Diff = 3
+        elif player.level == 31:
+            self.Diff = 6
+        elif player.level >= 32:
+            self.Diff = 5 * (player.level - 30)
+
+        self.maxExperience = int(((8 * player.level) + self.Diff) * ((player.level * 5) + 45))
 
         if self.experience >= self.maxExperience:
+            
             self.levelUp()
 
 
@@ -1279,16 +1288,14 @@ class BaseAttack(Attack):
         Action.__init__(self, TEXTURE_ICON_SPELL_BASEATTACK)
 
     def use(self, player, target):
-        target.health -= random.randint(3 * player.level, 5 * player.level)
-        player.offsetMana(random.randint(player.level, 3 * player.level))
+        target.health -= random.randint(3, 5)            #(player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        player.offsetMana(7)
 
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Attack"),
-            DescriptionTooltipData().text("Get a little bit of mana while you are not using it.").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("Using it everytime is exhausting right...?").color(YELLOW_TEXT)
         ]
 
 
@@ -1633,9 +1640,42 @@ class GameLogic(Drawable, Tickable):
 
         if self.player.target.isDead():
             oldEnemy = self.player.target
+            self.baseXp = (player.level * 5) + 45
+            if oldEnemy.level == player.level:
+                self.player.experience += self.baseXp
+            elif oldEnemy.level < player.level:
+                if Maths.between(player.level, 1, 7):
+                    self.zeroDifference = 5
+                elif Maths.between(player.level, 8, 9):
+                    self.zeroDifference = 6
+                elif Maths.between(player.level, 10, 11):
+                    self.zeroDifference = 7
+                elif Maths.between(player.level, 12, 15):
+                    self.zeroDifference = 8
+                elif Maths.between(player.level, 16, 19):
+                    self.zeroDifference = 9
+                elif Maths.between(player.level, 20, 29):
+                    self.zeroDifference = 11
+                elif Maths.between(player.level, 30, 39):
+                    self.zeroDifference = 12
+                elif Maths.between(player.level, 40, 44):
+                    self.zeroDifference = 13
+                elif Maths.between(player.level, 45, 49):
+                    self.zeroDifference = 14
+                elif Maths.between(player.level, 50, 54):
+                    self.zeroDifference = 15
+                elif Maths.between(player.level, 55, 59):                 
+                    self.zeroDifference = 16
+                if oldEnemy.level <= (player.level - 6):
+                    self.player.experience += 0
+                else:
+                    self.player.experience += int(self.baseXp * (1 - (player.level - oldEnemy.level) / self.zeroDifference))
+            
+            elif oldEnemy.level > player.level:
+                self.player.experience += int(self.baseXp * (1 + 0.05 * (oldEnemy.level - player.level)))
 
-            self.player.experience += oldEnemy.level * 4
-            self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1.2), int(oldEnemy.level + 1), int(oldEnemy.attackValue * 2))
+
+            self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 0), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard
             self.gameObjects.append(player.target)
 
             uiManager.components.remove(uiManager.enemyFrame)
