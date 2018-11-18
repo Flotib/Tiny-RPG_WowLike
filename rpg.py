@@ -382,15 +382,14 @@ class Background(UIComponent):
         UIComponent.__init__(self, x, y, width, height)
         self.originalTexture = None
         self.texture = None
-        
+
         if texture != None:
             self.texture = pygame.transform.scale(texture, (self.width, self.height))
-    
-    
+
     def update(self, newOriginalTexture):
         if newOriginalTexture != None:
             self.originalTexture = newOriginalTexture
-        
+
         return self
 
     def draw(self, screen):
@@ -405,18 +404,18 @@ class WindowBackground(Background):
         self.originalTexture = None
         self.texture = None
         self.update(texture)
-    
+
     def update(self, newOriginalTexture):
         super().update(newOriginalTexture)
-        
+
         self.onScreenResize(-1, -1)
-        
+
         return self
 
     def onScreenResize(self, newScreenWidth, newScreenHeight):
         self.width = WINDOW_WIDTH
         self.height = WINDOW_HEIGHT
-        
+
         if self.originalTexture != None:
             self.texture = pygame.transform.scale(self.originalTexture, (self.width, self.height))
 
@@ -522,6 +521,7 @@ class Text(UIComponent):
         if self.renderedText != None:
             screen.blit(self.renderedText, (self.x, self.y + self.textOffsetY))
 
+
 class FPSCounter(Text):
 
     def __init__(self, clock):
@@ -531,14 +531,14 @@ class FPSCounter(Text):
 
     def tick(self):
         fps = int(self.clock.get_fps())
-        
+
         if fps != self.previousFps:
             self.previousFps = fps
-            
+
             color = GREEN
             if fps < 30:
                 color = RED
-            
+
             self.text("FPS: " + str(fps), color)
 
 
@@ -615,7 +615,7 @@ class ItemHolder(Button):
 
     def draw(self, screen):
         super().draw(screen)
-        if self.item != None:            
+        if self.item != None:
             screen.blit(self.item.texture, (self.x, self.y))
             screen.blit(TEXTURE_INVENTORY_SPELL_HOLDER_BORDER, (self.x, self.y))
             if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player):
@@ -1069,12 +1069,12 @@ class UIManager(Drawable, Tickable):
         self.errorRemainingTick -= 1
         if self.errorRemainingTick <= 0:
             self.errorTextComponent = None
-            
+
         for component in self.components:
             if self.mouseX != -1 and self.mouseY != -1:
                 component.collide(self.mouseX, self.mouseY)
             component.tick()
-        
+
         self.fpsCounter.tick()
 
     def draw(self, screen):
@@ -1167,7 +1167,7 @@ class Player(LivingEntity):
         self.maxHealth = int(self.baseHealth * self.level)
         self.maxMana = int(self.baseMana * self.level)
         self.maxExperience = int((self.level + 1) * 50)
-        
+
         if self.experience >= self.maxExperience:
             self.levelUp()
 
@@ -1605,7 +1605,7 @@ class GameLogic(Drawable, Tickable):
 
     def handle(self):
         self.tick()
-        
+
         if self.hasPreviousRoundEnd:
             self.hasPreviousRoundEnd = False
 
@@ -1630,16 +1630,14 @@ class GameLogic(Drawable, Tickable):
                     self.hasPreviousRoundEnd = True
 
         self.removeDeadEntities()
-        
-        
-    
+
         if self.player.target.isDead():
             oldEnemy = self.player.target
-            
+
             self.player.experience += oldEnemy.level * 4
             self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1.2), int(oldEnemy.level + 1), int(oldEnemy.attackValue * 2))
             self.gameObjects.append(player.target)
-        
+
             uiManager.components.remove(uiManager.enemyFrame)
             uiManager.enemyFrame = EnemyEntityStatusFrame(self.player.target)
             uiManager.components.append(uiManager.enemyFrame)
@@ -1813,17 +1811,17 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY, 24)
         self.curseStackDamage = curseOfAgonySpell.debuffMinDamage
         self.curseMaxDamage = curseOfAgonySpell.debuffMaxDamage
-        self.damageDelay = 0  # TODO: Faire que si Curse of Agony est relancer par dessus son debuff encore actif, qu'il ne reprenne pas damageDelay = 0 mais garde sa précédente valeur
+        self.damageDelay = 0
 
     def onPreviousEffectAttached(self, effect):
-        self.damageDelay += 2
+        self.damageDelay = effect.damageDelay + 2
 
     def execute(self, livingEntity):
         self.damageDelay += 1
-        
+
         delay = self.damageDelay
         damage = 0
-        
+
         if delay == 2 or delay == 4:
             damage = self.curseStackDamage - 2
         if delay == 6 or delay == 8:
@@ -1834,7 +1832,7 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
             damage = self.curseStackDamage + 1
         if delay == 22 or delay >= 24:
             damage = self.curseStackDamage + 2
-            
+
         livingEntity.health -= damage
 
         self.finishExecute()
