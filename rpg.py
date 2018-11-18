@@ -1141,10 +1141,16 @@ class Action(Tickable):
         self.tooltipData = None
         self.cacheTooltip = True
         self.cost = 0
-        self.mindamage = 0
-        self.maxdamage = 0
-        self.minhealing = 0
-        self.maxhealing = 0
+        self.damage = 0
+        self.minDamage = 0
+        self.maxDamage = 0
+        self.heal = 0
+        self.minHealing = 0
+        self.maxHealing = 0
+        self.debuffMinDamage = 0
+        self.debuffMaxDamage = 0
+        self.buffMinHealing = 0
+        self.buffMaxHealing = 0
         self.amount = 0
         
     def use(self, player, target):
@@ -1250,11 +1256,14 @@ class LifeTapSpell(Spell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFETAP)
-        self.amount = 20  # Fonction liee au lvl du joueur
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.amount = 20  # TODO: Fonction liee au lvl du joueur
 
     def use(self, player, target):
-        player.health -= 20
-        player.offsetMana(20)
+        player.health -= self.amount
+        player.offsetMana(self.amount)
 
         return ACTION_REPLAY
 
@@ -1262,7 +1271,7 @@ class LifeTapSpell(Spell):
         return [
             TitleTooltipData().text("Life Tap"),
             DescriptionTooltipData().text("Instant"),
-            DescriptionTooltipData().text("Converts 20 health into 20 mana.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Converts " + str(self.amount) + " health into " + str(self.amount) + " mana.").color(YELLOW_TEXT),
         ]
 
 
@@ -1278,9 +1287,12 @@ class RenewHealingSpell(HealingSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_RENEW)
-        self.cost = 30
-        self.amount = 3  # TODO: Fonction mathematiques a ajouter
-        self.maxhealing = self.amount * 15
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.cost = 30   # TODO: Fonction mathematiques a ajouter
+        self.amount = 3   # TODO: Fonction mathematiques a ajouter
+        self.buffMaxHealing = self.amount * 15   # TODO: Fonction mathematiques a ajouter
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
@@ -1296,7 +1308,7 @@ class RenewHealingSpell(HealingSpell):
         return [
             TitleTooltipData().text("Renew"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Heals you of " + str(self.maxhealing) + " damage over 15sec.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Heals you of " + str(self.buffMaxHealing) + " damage over 15sec.").color(YELLOW_TEXT)
         ]
 
 
@@ -1304,15 +1316,20 @@ class FlashHealHealingSpell(HealingSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_FLASHHEAL)
-        self.cost = 35
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.cost = 35  # TODO: Ajouter la vraie fonction plus tard
+        self.minHealing = 54  # TODO: Ajouter la vraie fonction plus tard
+        self.maxHealing = 67  # TODO: Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
-
-        player.offsetHealth(18)
+        rand = random.randint(self.minHealing, self.maxHealing)
+        player.offsetHealth(rand)
 
         return ACTION_REPLAY
 
@@ -1321,7 +1338,7 @@ class FlashHealHealingSpell(HealingSpell):
             TitleTooltipData().text("Flash Heal"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
             DescriptionTooltipData().text("Instant"),
-            DescriptionTooltipData().text("Heals you for 54 to 67.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Heals you for " + str(self.minHealing) + " to " + str(self.maxHealing) + ".").color(YELLOW_TEXT)
         ]
 
 
@@ -1329,25 +1346,22 @@ class HealDrainSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFEDRAIN)
-        self.cost = 17
-        self.mindamage = 3
-        self.maxdamage = 15
         self.cacheTooltip = False
 
     def tick(self):
         self.cost = 17  # TODO: Ajouter la vraie fonction plus tard
-        self.mindamage = 3  # TODO: Ajouter la vraie fonction plus tard
-        self.maxdamage = 15  # TODO: Ajouter la vraie fonction plus tard
+        self.minDamage = 3  # TODO: Ajouter la vraie fonction plus tard
+        self.maxDamage = int(self.minDamage * 5)  # TODO: Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
-        rand = random.randint(1, 7)
+        rand = random.randint(1, 6)
         if rand > 5:
             rand = 5
-        damage = 3 * rand
+        damage = int(self.minDamage * rand)
         target.health -= damage
         player.offsetHealth(damage)
 
@@ -1357,7 +1371,7 @@ class HealDrainSpell(AttackSpell):
         return [
             TitleTooltipData().text("Heal Drain"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Transfers between " + str(self.mindamage) + " and " + str(self.maxdamage) + " health every second from the target to the caster.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Transfers between " + str(self.minDamage) + " and " + str(self.maxDamage) + " health from the target to the caster.").color(YELLOW_TEXT),
         ]
 
 
@@ -1365,15 +1379,22 @@ class ManaDrainSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_MANADRAIN)
-        self.cost = 12
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.cost = 19  # TODO: Ajouter la vraie fonction plus tard
+        self.minHealing = 8  # TODO: Ajouter la vraie fonction plus tard
+        self.maxHealing = int(self.minHealing * 5)  # TODO: Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
-
-        amount = random.randint(1, 5) * 6
+        rand = random.randint(1, 6)
+        if rand > 5:
+            rand = 5
+        amount = int(self.minHealing * rand)
         drain = target.mana
         if drain >= amount:
             drain = amount
@@ -1395,27 +1416,32 @@ class FireBallSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_FIREBALL)
-        self.cost = 24
+        self.cacheToolTip = False
+
+    def tick(self):
+        self.cost = 30  #TODO : Ajouter la vraie fonction plus tard
+        self.minDamage = 14  #TODO : Ajouter la vraie fonction plus tard
+        self.MaxDamage = 23  #TODO : Ajouter la vraie fonction plus tard
+        self.debuffMaxDamage = 2  #TODO : Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
         player.mana -= self.cost
+        rand = random.randint(self.minDamage, self.MaxDamage)
+        target.health -= rand
 
-        target.health -= random.randint(22, 26)
-
-        if random.randint(0, 3) == 3:
-            target.giveEffect(BurningDebuffEffect())
+        target.giveEffect(BurningDebuffEffect(self))
 
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Fire Ball"),
+            TitleTooltipData().text("Fireball"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Throw a fireball and do between 22 and 26 damage.").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("You have 1/4 chance to set the target on fire.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Hurls a fiery ball that causes " + str(self.minDamage) + " to " + str(self.MaxDamage) + " Fire damage and an").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("additional " + str(self.debuffMaxDamage) + " Fire damage over 4sec.").color(YELLOW_TEXT),
         ]
 
 
@@ -1423,15 +1449,20 @@ class CorruptionSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_CORRUPTION)
-        self.cost = 35
+        self.cacheToolTip = False
+
+    def tick(self):
+        self.cost = 35  #TODO : Ajouter la vraie fonction plus tard
+        self.amount = 10  #TODO : Ajouter la vraie fonction plus tard
+        self.debuffMaxDamage = self.amount * 4  #TODO : Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
 
-        player.mana -= 35
+        player.mana -= self.cost
 
-        target.giveEffect(CorruptionDebuffEffect())
+        target.giveEffect(CorruptionDebuffEffect(self))
 
         return ACTION_SUCCESS
 
@@ -1439,7 +1470,7 @@ class CorruptionSpell(AttackSpell):
         return [
             TitleTooltipData().text("Corruption"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Give corruption effect to the target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Corrupts the target, causing " + str(self.debuffMaxDamage) + " Shadow damage over 12sec.").color(YELLOW_TEXT)
         ]
 
 
@@ -1447,7 +1478,13 @@ class ImmolationSpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_IMMOLATION)
-        self.cost = 15
+        self.cacheToolTip = False
+    
+    def tick(self):
+        self.cost = 25  #TODO : Ajouter la vraie fonction plus tard
+        self.damage = 8  #TODO : Ajouter la vraie fonction plus tard
+        self.amount = 4  #TODO : Ajouter la vraie fonction plus tard
+        self.debuffMaxDamage = self.amount * 5  #TODO : Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
@@ -1455,9 +1492,9 @@ class ImmolationSpell(AttackSpell):
 
         player.mana -= self.cost
 
-        target.health -= random.randint(6, 8)
+        target.health -= self.damage
 
-        target.giveEffect(ImmolationDebuffEffect())
+        target.giveEffect(ImmolationDebuffEffect(self))
 
         return ACTION_SUCCESS
 
@@ -1465,7 +1502,8 @@ class ImmolationSpell(AttackSpell):
         return [
             TitleTooltipData().text("Immolation"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Do between 6 and 8 damage and give immolation effect to the target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Burns the enemy for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire").color(YELLOW_TEXT),
+             DescriptionTooltipData().text("damage over 15sec.").color(YELLOW_TEXT)
         ]
 
 
@@ -1473,7 +1511,12 @@ class CurseOfAgonySpell(AttackSpell):
 
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_CURSEOFAGONY)
-        self.cost = 12
+        self.cacheToolTip = False
+
+    def tick(self):
+        self.cost = 25  #TODO : Ajouter la vraie fonction plus tard
+        self.debuffMinDamage = 7  #TODO : Ajouter la vraie fonction plus tard
+        self.debuffMaxDamage = self.debuffMinDamage *  12 #TODO : Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player, COST_MANA):
@@ -1481,15 +1524,15 @@ class CurseOfAgonySpell(AttackSpell):
 
         player.mana -= self.cost
 
-        target.giveEffect(CurseOfAgonyDebuffEffect())
+        target.giveEffect(CurseOfAgonyDebuffEffect(self))
 
         return ACTION_SUCCESS
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Curse Of Agony"),
+            TitleTooltipData().text("Curse of Agony"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Give curse of agony effect to the target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Curses the target with agony, causing " + str(self.debuffMaxDamage) + " Shadow damage over 24sec. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse can be active on any one target.").color(YELLOW_TEXT)
         ]
 
 
@@ -1588,10 +1631,10 @@ class TimedEffect(BaseEffect):
     def __init__(self, texture, remaingTime):
         BaseEffect.__init__(self, texture)
         self.remaingTime = remaingTime
-        self.mindamage = 0
-        self.maxdamage = 0
-        self.minhealing = 0
-        self.maxhealing = 0
+        self.minDamage = 0
+        self.maxDamage = 0
+        self.minHealing = 0
+        self.maxHealing = 0
         self.amount = 0
 
     def finishExecute(self):
@@ -1623,11 +1666,18 @@ class DebuffEffect(TimedEffect):
 
 class BurningDebuffEffect(DebuffEffect):
 
-    def __init__(self):
-        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_BURNING, random.randint(3, 5))
+    def __init__(self, fireBallSpell):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_BURNING, 4)
+        self.damageDelay = 0
+        self.maxDebuffDamage = fireBallSpell.debuffMaxDamage / 2
 
     def execute(self, livingEntity):
-        livingEntity.health -= random.randint(2, 3)  # multipliÃ© par le level ou un truc du genre
+        self.damageDelay += 1
+        if self.damageDelay == 2: 
+            livingEntity.health -= self.maxDebuffDamage  # TODO: Fonction maths...
+        elif self.damageDelay == 4:
+            livingEntity.health -= self.maxDebuffDamage  # TODO: Fonction maths...
+            self.damageDelay = 0
 
         self.finishExecute()
         return True
@@ -1635,11 +1685,24 @@ class BurningDebuffEffect(DebuffEffect):
 
 class ImmolationDebuffEffect(DebuffEffect):
 
-    def __init__(self):
-        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION, 6)
+    def __init__(self, immolationSpell):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION, 15)
+        self.damageDelay = 0
+        self.amount = immolationSpell.amount
 
     def execute(self, livingEntity):
-        livingEntity.health -= 2  # multipliÃ© par le level ou un truc du genre
+        self.damageDelay += 1
+        if self.damageDelay == 3: 
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 6:
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 9:
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 12:
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 15:
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+            self.damageDelay = 0
 
         self.finishExecute()
         return True
@@ -1647,11 +1710,22 @@ class ImmolationDebuffEffect(DebuffEffect):
 
 class CorruptionDebuffEffect(DebuffEffect):
 
-    def __init__(self):
-        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION, 15)
+    def __init__(self, corruptionDebuffEffect):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION, 12)
+        self.damageDelay = 0
+        self.amount = corruptionDebuffEffect.amount
 
     def execute(self, livingEntity):
-        livingEntity.health -= 3  # multipliÃ© par le level ou un truc du genre
+        self.damageDelay += 1
+        if self.damageDelay == 3: 
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 6:
+            livingEntity.health -= self.amount  # TODO: Fonction maths...
+        elif self.damageDelay == 9:
+            livingEntity.health -= self.amount
+        elif self.damageDelay == 12:
+            livingEntity.health -= self.amount
+            self.damageDelay = 0
 
         self.finishExecute()
         return True
@@ -1659,22 +1733,41 @@ class CorruptionDebuffEffect(DebuffEffect):
 
 class CurseOfAgonyDebuffEffect(DebuffEffect):
 
-    def __init__(self):
-        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY, 6)
-        self.curseDamage = 0
+    def __init__(self, curseOfAgonySpell):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY, 24)
+        self.curseStackDamage = curseOfAgonySpell.debuffMinDamage
+        self.curseMaxDamage = curseOfAgonySpell.debuffMaxDamage
+        self.damageDelay = 0 # TODO: Faire que si Curse of Agony est relancer par dessus son debuff encore actif, qu'il ne reprenne pas damageDelay = 0 mais garde sa précédente valeur
 
     def onPreviousEffectAttached(self, effect):
-        add = 2
-        if self.curseDamage >= 12:
-            add = 0
-
-        self.curseDamage = effect.curseDamage + add
+        self.damageDelay += 2
 
     def execute(self, livingEntity):
-        if self.curseDamage < 12:
-            self.curseDamage += 2
-
-        livingEntity.health -= self.curseDamage
+        self.damageDelay += 1
+        if self.damageDelay == 2:
+            livingEntity.health -= self.curseStackDamage - 2
+        if self.damageDelay == 4:
+            livingEntity.health -= self.curseStackDamage - 2
+        if self.damageDelay == 6:
+            livingEntity.health -= self.curseStackDamage - 1
+        if self.damageDelay == 8:
+            livingEntity.health -= self.curseStackDamage - 1
+        if self.damageDelay == 10:
+            livingEntity.health -= self.curseStackDamage
+        if self.damageDelay == 12:
+            livingEntity.health -= self.curseStackDamage
+        if self.damageDelay == 14:
+            livingEntity.health -= self.curseStackDamage
+        if self.damageDelay == 16:
+            livingEntity.health -= self.curseStackDamage
+        if self.damageDelay == 18:
+            livingEntity.health -= self.curseStackDamage + 1
+        if self.damageDelay == 20:
+            livingEntity.health -= self.curseStackDamage + 1
+        if self.damageDelay == 22:
+            livingEntity.health -= self.curseStackDamage + 2
+        if self.damageDelay >= 24:
+            livingEntity.health -= self.curseStackDamage + 2  
 
         self.finishExecute()
         return True
@@ -1688,7 +1781,7 @@ enemy = Enemy(50, 50, 100, 1, 5)
 gameLogic.gameObjects.append(player)
 gameLogic.gameObjects.append(enemy)
 
-# uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
+#uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 # uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
 # uiManager.components.append(WindowBackground(TEXTURE_BACKGROUND_TEST))
 uiManager.components.append(SpellInventory(player))
