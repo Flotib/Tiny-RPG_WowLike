@@ -18,13 +18,15 @@ SPELL_ERROR_REASON_NOT_ENOUGHT_PLACE = 1
 SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT = 2
 SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY = 3
 SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA = 4
+SPELL_ERROR_REASON_I_CANT_DO_THIS = 5
 
 SPELL_ERROR_TRADUCTION = {
     SPELL_ERROR_REASON_NOT_ENOUGHT_MANA: "Not enought mana.",
     SPELL_ERROR_REASON_NOT_ENOUGHT_PLACE: "Not enought place.",
     SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT: "Not enought skillpoint.",
     SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY: "Not enought money.",
-    SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA: "Enemy has not enought money.",
+    SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA: "Enemy has not enought mana.",
+    SPELL_ERROR_REASON_I_CANT_DO_THIS: "I cant do this now.",
 }
 
 # MODULAR
@@ -1372,7 +1374,7 @@ class RenewHealingSpell(HealingSpell):
         return [
             TitleTooltipData().text("Renew"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Heals you of " + str(self.buffMaxHealing) + " damage over 15sec.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Heals you of " + str(self.buffMaxHealing) + " damage over 15rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1505,7 +1507,7 @@ class FireBallSpell(AttackSpell):
             TitleTooltipData().text("Fireball"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
             DescriptionTooltipData().text("Hurls a fiery ball that causes " + str(self.minDamage) + " to " + str(self.MaxDamage) + " Fire damage and an").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("additional " + str(self.debuffMaxDamage) + " Fire damage over 4sec.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("additional " + str(self.debuffMaxDamage) + " Fire damage over 4rounds.").color(YELLOW_TEXT),
         ]
 
 
@@ -1534,7 +1536,7 @@ class CorruptionSpell(AttackSpell):
         return [
             TitleTooltipData().text("Corruption"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Corrupts the target, causing " + str(self.debuffMaxDamage) + " Shadow damage over 12sec.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Corrupts the target, causing " + str(self.debuffMaxDamage) + " Shadow damage over 12rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1567,7 +1569,7 @@ class ImmolationSpell(AttackSpell):
             TitleTooltipData().text("Immolation"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
             DescriptionTooltipData().text("Burns the enemy for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire").color(YELLOW_TEXT),
-             DescriptionTooltipData().text("damage over 15sec.").color(YELLOW_TEXT)
+             DescriptionTooltipData().text("damage over 15rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1596,7 +1598,7 @@ class CurseOfAgonySpell(AttackSpell):
         return [
             TitleTooltipData().text("Curse of Agony"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Curses the target with agony, causing " + str(self.debuffMaxDamage) + " Shadow damage over 24sec. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse can be active on any one target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Curses the target with agony, causing " + str(self.debuffMaxDamage) + " Shadow damage over 24rounds. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse can be active on any one target.").color(YELLOW_TEXT)
         ]
 
 
@@ -1742,9 +1744,10 @@ class BaseEffect(Drawable):
 
 class TimedEffect(BaseEffect):
 
-    def __init__(self, texture, remaingTime):
+    def __init__(self, texture, remainingTime):
         BaseEffect.__init__(self, texture)
-        self.remaingTime = remaingTime
+        self.remainingTime = remainingTime
+        self.debuffDelay = 0
         self.minDamage = 0
         self.maxDamage = 0
         self.minHealing = 0
@@ -1752,8 +1755,8 @@ class TimedEffect(BaseEffect):
         self.amount = 0
 
     def finishExecute(self):
-        self.remaingTime -= 1
-        if self.remaingTime <= 0:
+        self.remainingTime -= 1
+        if self.remainingTime <= 0:
             self.endEffect()
 
 
@@ -1782,16 +1785,11 @@ class BurningDebuffEffect(DebuffEffect):
 
     def __init__(self, fireBallSpell):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_BURNING, 4)
-        self.damageDelay = 0
-        self.maxDebuffDamage = fireBallSpell.debuffMaxDamage / 2
+        self.maxDebuffDamage = int(fireBallSpell.debuffMaxDamage / 2)
 
     def execute(self, livingEntity):
-        self.damageDelay += 1
-        if self.damageDelay == 2:
-            livingEntity.health -= self.maxDebuffDamage  # TODO: Fonction maths...
-        elif self.damageDelay == 4:
-            livingEntity.health -= self.maxDebuffDamage  # TODO: Fonction maths...
-            self.damageDelay = 0
+        if self.remainingTime == 3 or self.remainingTime == 1:
+            livingEntity.health -= self.maxDebuffDamage
 
         self.finishExecute()
         return True
@@ -1801,22 +1799,11 @@ class ImmolationDebuffEffect(DebuffEffect):
 
     def __init__(self, immolationSpell):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION, 15)
-        self.damageDelay = 0
         self.amount = immolationSpell.amount
 
     def execute(self, livingEntity):
-        self.damageDelay += 1
-        if self.damageDelay == 3:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 6:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 9:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 12:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 15:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-            self.damageDelay = 0
+        if self.remainingTime == 13 or self.remainingTime == 10 or self.remainingTime == 7 or self.remainingTime == 4 or self.remainingTime == 1:
+            livingEntity.health -= self.amount
 
         self.finishExecute()
         return True
@@ -1826,55 +1813,42 @@ class CorruptionDebuffEffect(DebuffEffect):
 
     def __init__(self, corruptionDebuffEffect):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION, 12)
-        self.damageDelay = 0
         self.amount = corruptionDebuffEffect.amount
 
     def execute(self, livingEntity):
-        self.damageDelay += 1
-        if self.damageDelay == 3:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 6:
-            livingEntity.health -= self.amount  # TODO: Fonction maths...
-        elif self.damageDelay == 9:
+        if self.remainingTime == 10 or self.remainingTime == 7 or self.remainingTime == 4 or self.remainingTime == 1:
             livingEntity.health -= self.amount
-        elif self.damageDelay == 12:
-            livingEntity.health -= self.amount
-            self.damageDelay = 0
 
         self.finishExecute()
         return True
 
 
 class CurseOfAgonyDebuffEffect(DebuffEffect):
-
     def __init__(self, curseOfAgonySpell):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY, 24)
         self.curseStackDamage = curseOfAgonySpell.debuffMinDamage
-        self.curseMaxDamage = curseOfAgonySpell.debuffMaxDamage
-        self.damageDelay = 0
+        self.curseStackMinDamage = self.curseStackDamage - 4
+        self.curseStackMaxDamage = self.curseStackDamage + 4
+        self.stackNumber = 0
 
     def onPreviousEffectAttached(self, effect):
-        self.damageDelay = effect.damageDelay + 2
+        add = 1
+        if self.stackNumber >= 12:
+            add = 0
+        
+        self.stackNumber = effect.stackNumber + add
 
     def execute(self, livingEntity):
-        self.damageDelay += 1
-
-        delay = self.damageDelay
-        damage = 0
-
-        if delay == 2 or delay == 4:
-            damage = self.curseStackDamage - 2
-        if delay == 6 or delay == 8:
-            damage = self.curseStackDamage - 1
-        if delay >= 10 and delay <= 16 and delay % 2 == 0:
-            damage = self.curseStackDamage
-        if delay == 18 or delay == 20:
-            damage = self.curseStackDamage + 1
-        if delay == 22 or delay >= 24:
-            damage = self.curseStackDamage + 2
-
-        livingEntity.health -= damage
-
+        if self.remainingTime == 23 or self.remainingTime == 21 or self.remainingTime == 19 or self.remainingTime == 17 or self.remainingTime == 15 or self.remainingTime == 13 or self.remainingTime == 11 or self.remainingTime == 9 or self.remainingTime == 7 or self.remainingTime == 5 or self.remainingTime == 3 or self.remainingTime == 1:
+            if self.stackNumber < 4:
+                self.stackNumber += 1
+                livingEntity.health -= self.curseStackMinDamage
+            elif  self.stackNumber >= 4 and self.stackNumber < 8:
+                self.stackNumber += 1
+                livingEntity.health -= self.curseStackDamage
+            elif self.stackNumber >= 8:
+                livingEntity.health -= self.curseStackMaxDamage
+        
         self.finishExecute()
         return True
 
