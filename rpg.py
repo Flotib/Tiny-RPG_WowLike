@@ -522,6 +522,25 @@ class Text(UIComponent):
         if self.renderedText != None:
             screen.blit(self.renderedText, (self.x, self.y + self.textOffsetY))
 
+class FPSCounter(Text):
+
+    def __init__(self, clock):
+        Text.__init__(self, 20, 20, "- FPS", RED)
+        self.clock = clock
+        self.previousFps = 0
+
+    def tick(self):
+        fps = int(self.clock.get_fps())
+        
+        if fps != self.previousFps:
+            self.previousFps = fps
+            
+            color = GREEN
+            if fps < 30:
+                color = RED
+            
+            self.text("FPS: " + str(fps), color)
+
 
 class Button(UIComponent):
 
@@ -1012,7 +1031,8 @@ class EnemyEntityStatusFrame(LivingEntityStatusFrame):
 
 class UIManager(Drawable, Tickable):
 
-    def __init__(self):
+    def __init__(self, gameClock):
+        self.gameClock = gameClock
         self.components = []
         self.tooltips = []
         self.mouseX = -1
@@ -1021,6 +1041,7 @@ class UIManager(Drawable, Tickable):
         self.errorTextComponent = None
         self.errorRemainingTick = 0
         self.enemyFrame = None
+        self.fpsCounter = FPSCounter(gameClock)
 
     def notifyError(self, error):
         self.errorText = error
@@ -1044,6 +1065,18 @@ class UIManager(Drawable, Tickable):
             if isinstance(component, UIContainerComponent):
                 component.dispatchClickEvent(event.button, pressed)
 
+    def tick(self):
+        self.errorRemainingTick -= 1
+        if self.errorRemainingTick <= 0:
+            self.errorTextComponent = None
+            
+        for component in self.components:
+            if self.mouseX != -1 and self.mouseY != -1:
+                component.collide(self.mouseX, self.mouseY)
+            component.tick()
+        
+        self.fpsCounter.tick()
+
     def draw(self, screen):
         for component in self.components:
             component.draw(screen)
@@ -1055,17 +1088,7 @@ class UIManager(Drawable, Tickable):
             self.errorTextComponent.y = WINDOW_HEIGHT * 0.13
             self.errorTextComponent.draw(screen)
 
-        Text(20, 20, "FPS: " + str(clock.get_fps()), RED).create().draw(screen)
-
-    def tick(self):
-        self.errorRemainingTick -= 1
-        if self.errorRemainingTick <= 0:
-            self.errorTextComponent = None
-            
-        for component in self.components:
-            if self.mouseX != -1 and self.mouseY != -1:
-                component.collide(self.mouseX, self.mouseY)
-            component.tick()
+        self.fpsCounter.draw(screen)
 
     def mousePosition(self):
         return (self.mouseX, self.mouseY)
@@ -1797,36 +1820,28 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
 
     def execute(self, livingEntity):
         self.damageDelay += 1
-        if self.damageDelay == 2:
-            livingEntity.health -= self.curseStackDamage - 2
-        if self.damageDelay == 4:
-            livingEntity.health -= self.curseStackDamage - 2
-        if self.damageDelay == 6:
-            livingEntity.health -= self.curseStackDamage - 1
-        if self.damageDelay == 8:
-            livingEntity.health -= self.curseStackDamage - 1
-        if self.damageDelay == 10:
-            livingEntity.health -= self.curseStackDamage
-        if self.damageDelay == 12:
-            livingEntity.health -= self.curseStackDamage
-        if self.damageDelay == 14:
-            livingEntity.health -= self.curseStackDamage
-        if self.damageDelay == 16:
-            livingEntity.health -= self.curseStackDamage
-        if self.damageDelay == 18:
-            livingEntity.health -= self.curseStackDamage + 1
-        if self.damageDelay == 20:
-            livingEntity.health -= self.curseStackDamage + 1
-        if self.damageDelay == 22:
-            livingEntity.health -= self.curseStackDamage + 2
-        if self.damageDelay >= 24:
-            livingEntity.health -= self.curseStackDamage + 2
+        
+        delay = self.damageDelay
+        damage = 0
+        
+        if delay == 2 or delay == 4:
+            damage = self.curseStackDamage - 2
+        if delay == 6 or delay == 8:
+            damage = self.curseStackDamage - 1
+        if delay >= 10 and delay <= 16 and delay % 2 == 0:
+            damage = self.curseStackDamage
+        if delay == 18 or delay == 20:
+            damage = self.curseStackDamage + 1
+        if delay == 22 or delay >= 24:
+            damage = self.curseStackDamage + 2
+            
+        livingEntity.health -= damage
 
         self.finishExecute()
         return True
 
 
-uiManager = UIManager()
+uiManager = UIManager(pygame.time.Clock())
 player = Player(75, 600, 100 , 100, 1, "Hero")
 gameLogic = GameLogic(player)
 player.target = Enemy(50, 50, 100, 1, 1)
@@ -1892,7 +1907,7 @@ def handleEvent(event):
 
 screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE, 32)
 pygame.display.set_caption(WINDOW_TITLE)
-clock = pygame.time.Clock()
+clock = uiManager.gameClock
 
 done = False
 while not done:
