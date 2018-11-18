@@ -1018,15 +1018,15 @@ class UIManager(Drawable, Tickable):
                 component.dispatchClickEvent(event.button, pressed)
 
     def draw(self, screen):
-        if self.errorTextComponent != None:
-            self.errorTextComponent.x = (WINDOW_WIDTH - self.errorTextComponent.width) / 2
-            self.errorTextComponent.y = WINDOW_HEIGHT * 0.13
-            self.errorTextComponent.draw(screen)
-
         for component in self.components:
             component.draw(screen)
         for tooltip in self.tooltips:
             tooltip.draw(screen)
+            
+        if self.errorTextComponent != None:
+            self.errorTextComponent.x = (WINDOW_WIDTH - self.errorTextComponent.width) / 2
+            self.errorTextComponent.y = WINDOW_HEIGHT * 0.13
+            self.errorTextComponent.draw(screen)
 
         Text(20, 20, "FPS: " + str(clock.get_fps()), RED).create().draw(screen)
 
@@ -1781,7 +1781,7 @@ enemy = Enemy(50, 50, 100, 1, 5)
 gameLogic.gameObjects.append(player)
 gameLogic.gameObjects.append(enemy)
 
-#uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
+# uiManager.components.append(Button(50, 50, 60, 60).text("warp").texture(TEXTURE_TEST))
 # uiManager.components.append(Text(100, 300, "J'aime la glace'o'chocolat", RED).create())
 # uiManager.components.append(WindowBackground(TEXTURE_BACKGROUND_TEST))
 uiManager.components.append(SpellInventory(player))
@@ -1789,12 +1789,18 @@ uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
 uiManager.components.append(EnemyEntityStatusFrame(enemy))
 
-uiManager.notifyError("")
+# uiManager.notifyError("Ceci est une erreur")
 
 
 def loop():
     uiManager.tick()
 
+    gameLogic.handle()
+
+    gameLogic.draw(screen)
+    uiManager.draw(screen)
+
+def afterLoop():
     if not enemy.isDead():
         Text(50, 350, "Enemy: " + str(enemy.health) + "/" + str(enemy.maxHealth), RED).create().draw(screen)
         Text(200, 350, "mana: " + str(enemy.mana) + "/" + str(enemy.maxMana), WHITE).create().draw(screen)
@@ -1806,11 +1812,6 @@ def loop():
         Text(200, 400, "mana: " + str(player.mana) + "/" + str(player.maxMana), WHITE).create().draw(screen)
     else:
         Text(50, 400, "Player is dead (actual: " + str(player.health) + ")", RED).create().draw(screen)
-
-    gameLogic.handle()
-
-    gameLogic.draw(screen)
-    uiManager.draw(screen)
 
 
 def handleEvent(event):
@@ -1850,6 +1851,7 @@ while not done:
             handleEvent(event)
     screen.fill(BLACK)
     loop()
+    afterLoop()
     pygame.display.flip()
     clock.tick(GAME_TICK)
 
