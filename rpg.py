@@ -137,6 +137,7 @@ print("Loading textues...")
 RESIZE_SPELL = (50, 50)
 RESIZE_EFFECT = (35, 35)
 RESIZE_PORTRAIT = (94, 94)
+RESIZE_ITEM_MOVING = (35, 35)
 
 TEXTURE_TEST = Assets.loadImage("assets/test.png")
 TEXTURE_TEST_ICON = Assets.loadResizedImage("assets/test.png", RESIZE_SPELL)
@@ -589,8 +590,11 @@ class ItemHolder(Button):
             if pressed and isinstance(self.item, SpellItem):
                 self.item.triggerUse()
 
-        elif button == MOUSE_MIDDLE and pressed:
-            self.item = None
+        elif button == MOUSE_MIDDLE:
+            if pressed and self.item != None and itemMovingSystem.canMoveItem():
+                itemMovingSystem.moveItem(self, self.item)
+            elif pressed and itemMovingSystem.isMoving():
+                itemMovingSystem.releaseItem(self)
 
     def tick(self):
         if not self.selected and self.maintained:
@@ -876,6 +880,10 @@ class LivingEntityModularBar(ModularBar):
             screen.blit(self.scaledTextureContainer, (self.x, self.y))
 
         if self.selected:
+            textblack = Text(0, self.y + 1, str(value) + "/" + str(maxValue), BLACK).font(FONT_WOW_TINY).create()
+            textblack.x = self.x + ((self.width - textblack.width) / 2)
+            textblack.textOffsetY = 2
+            textblack.draw(screen)
             text = Text(0, self.y + 1, str(value) + "/" + str(maxValue), LIGHT_GREY).font(FONT_ARIALN_TINY).create()
             text.x = self.x + ((self.width - text.width) / 2)
             text.textOffsetY = 2
@@ -1064,6 +1072,9 @@ class UIManager(Drawable, Tickable):
                 component.onClick(event.button, pressed)
             if isinstance(component, UIContainerComponent):
                 component.dispatchClickEvent(event.button, pressed)
+
+        # if event.button == MOUSE_MIDDLE and not pressed and itemMovingSystem.isMoving():
+        #    itemMovingSystem.restoreItem()
 
     def tick(self):
         self.errorRemainingTick -= 1
@@ -1860,7 +1871,84 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
         return True
 
 
+class ItemMovingSystem(Tickable, Drawable):
+
+    def __init__(self, uiManager):
+        self.uiManager = uiManager
+        self.movingItem = None
+        self.itemHolder = None
+        self.reducedItemTexture = None
+
+    def canMoveItem(self):
+        return self.movingItem == None and self.itemHolder == None
+
+    def isMoving(self):
+        return self.movingItem != None
+
+    def moveItem(self, itemHolder, item):
+        if itemHolder == None or item == None:
+            return False
+
+        self.movingItem = item
+        self.itemHolder = itemHolder
+
+        self.createReducedItemTexture(item)
+
+        self.itemHolder.item = None
+        return True
+
+    def releaseItem(self, newItemHolder):
+        if newItemHolder == None:
+            return False
+
+        if self.movingItem == None or self.itemHolder == None:
+            self.resetValues()
+            return False
+
+        actualItem = newItemHolder.item
+        swapMovingItem = self.movingItem
+
+        if actualItem != None:
+            newItemHolder.item = swapMovingItem
+            self.createReducedItemTexture(actualItem)
+
+            self.movingItem = actualItem
+            self.itemHolder = newItemHolder
+            return True
+
+        newItemHolder.item = self.movingItem
+
+        self.resetValues()
+        return True
+
+    def createReducedItemTexture(self, item):
+        self.reducedItemTexture = pygame.transform.scale(item.texture, RESIZE_ITEM_MOVING)
+
+    def restoreItem(self):
+        if self.movingItem == None or self.itemHolder == None:
+            self.resetValues()
+            return False
+
+        self.itemHolder.item = self.movingItem
+
+        self.resetValues()
+        return True
+
+    def resetValues(self):
+        """
+        Do a hard reset of value, just to be sure
+        """
+        self.itemHolder = None
+        self.movingItem = None
+        self.reducedItemTexture = None
+
+    def draw(self, screen):
+        if self.movingItem != None and self.itemHolder != None:
+            screen.blit(self.reducedItemTexture, self.uiManager.mousePosition())
+
+
 uiManager = UIManager(pygame.time.Clock())
+itemMovingSystem = ItemMovingSystem(uiManager)
 player = Player(75, 600, 100 , 100, 1, "Hero")
 gameLogic = GameLogic(player)
 player.target = Enemy(50, 50, 100, 1, 1)
@@ -1874,6 +1962,7 @@ gameLogic.gameObjects.append(player.target)
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
+# uiManager.components.append(ItemHolder(WINDOW_WIDTH / 2 - 8, WINDOW_HEIGHT / 2 - 8, 49, 49))
 
 uiManager.enemyFrame = EnemyEntityStatusFrame(player.target)
 uiManager.components.append(uiManager.enemyFrame)
@@ -1883,11 +1972,13 @@ uiManager.components.append(uiManager.enemyFrame)
 
 def loop():
     uiManager.tick()
+    itemMovingSystem.tick()
 
     gameLogic.handle()
 
     gameLogic.draw(screen)
     uiManager.draw(screen)
+    itemMovingSystem.draw(screen)
 
 
 def afterLoop():
