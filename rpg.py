@@ -1132,6 +1132,11 @@ class LivingEntity(Entity):
     def levelUp(self):
         self.level += 1
 
+        self.onLevelUp()
+
+    def onLevelUp(self):
+        pass
+
     def offsetMana(self, offset):
         newMana = self.mana + offset
         if newMana > self.maxMana:
@@ -1162,6 +1167,9 @@ class Player(LivingEntity):
         self.hasPlay = False
         self.target = None
 
+    def onLevelUp(self):
+        self.experience = 0
+
     def tick(self):
         self.maxHealth = int(self.baseHealth * self.level)
         self.maxMana = int(self.baseMana * self.level)
@@ -1179,7 +1187,6 @@ class Player(LivingEntity):
         self.maxExperience = int(((8 * player.level) + self.Diff) * ((player.level * 5) + 45))
 
         if self.experience >= self.maxExperience:
-            
             self.levelUp()
 
 
@@ -1290,7 +1297,7 @@ class BaseAttack(Attack):
         Action.__init__(self, TEXTURE_ICON_SPELL_BASEATTACK)
 
     def use(self, player, target):
-        target.health -= random.randint(3, 5)            #(player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         player.offsetMana(7)
 
         return ACTION_SUCCESS
@@ -1622,7 +1629,6 @@ class GameLogic(Drawable, Tickable):
                 if isinstance(livingEntity, LivingEntity):
                     self.handleEffects(livingEntity)
 
-        if self.isPlayerRound:
             if self.player not in self.disabledEntitiesForRound:
                 self.handlePlayerRound(self.player)
 
@@ -1634,9 +1640,9 @@ class GameLogic(Drawable, Tickable):
         else:
             if self.player.hasPlay and len(self.remainingEnemyRound) > 0:
                 self.handleEnemyRound(self.remainingEnemyRound[0])
-                if len(self.remainingEnemyRound) == 0:
-                    self.isPlayerRound = True
-                    self.hasPreviousRoundEnd = True
+            if len(self.remainingEnemyRound) == 0:
+                self.isPlayerRound = True
+                self.hasPreviousRoundEnd = True
 
         self.removeDeadEntities()
 
@@ -1666,19 +1672,19 @@ class GameLogic(Drawable, Tickable):
                     self.zeroDifference = 14
                 elif Maths.between(player.level, 50, 54):
                     self.zeroDifference = 15
-                elif Maths.between(player.level, 55, 59):                 
+                elif Maths.between(player.level, 55, 59):
                     self.zeroDifference = 16
                 if oldEnemy.level <= (player.level - 6):
                     self.player.experience += 0
                 else:
                     self.player.experience += int(self.baseXp * (1 - (player.level - oldEnemy.level) / self.zeroDifference))
-            
+
             elif oldEnemy.level > player.level:
                 self.player.experience += int(self.baseXp * (1 + 0.05 * (oldEnemy.level - player.level)))
 
-
             self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 0), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard
             self.gameObjects.append(player.target)
+            print (self.player.target.level)
 
             uiManager.components.remove(uiManager.enemyFrame)
             uiManager.enemyFrame = EnemyEntityStatusFrame(self.player.target)
@@ -1824,6 +1830,7 @@ class CorruptionDebuffEffect(DebuffEffect):
 
 
 class CurseOfAgonyDebuffEffect(DebuffEffect):
+
     def __init__(self, curseOfAgonySpell):
         DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY, 24)
         self.curseStackDamage = curseOfAgonySpell.debuffMinDamage
@@ -1835,11 +1842,11 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
         add = 1
         if self.stackNumber >= 12:
             add = 0
-        
+
         self.stackNumber = effect.stackNumber + add
 
     def execute(self, livingEntity):
-        if self.remainingTime == 23 or self.remainingTime == 21 or self.remainingTime == 19 or self.remainingTime == 17 or self.remainingTime == 15 or self.remainingTime == 13 or self.remainingTime == 11 or self.remainingTime == 9 or self.remainingTime == 7 or self.remainingTime == 5 or self.remainingTime == 3 or self.remainingTime == 1:
+        if self.remainingTime % 2 == 1:
             if self.stackNumber < 4:
                 self.stackNumber += 1
                 livingEntity.health -= self.curseStackMinDamage
@@ -1848,7 +1855,7 @@ class CurseOfAgonyDebuffEffect(DebuffEffect):
                 livingEntity.health -= self.curseStackDamage
             elif self.stackNumber >= 8:
                 livingEntity.health -= self.curseStackMaxDamage
-        
+
         self.finishExecute()
         return True
 
