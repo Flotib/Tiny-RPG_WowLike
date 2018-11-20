@@ -32,7 +32,9 @@ SPELL_ERROR_TRADUCTION = {
 # MODULAR
 UI_MODULAR_BAR_INFO_TYPE_HEALTH = 0
 UI_MODULAR_BAR_INFO_TYPE_MANA = 1
-UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE = 2
+UI_MODULAR_BAR_INFO_TYPE_RAGE = 2
+UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE = 3
+
 
 # COST
 COST_HEALTH = 0
@@ -130,7 +132,8 @@ FONT_TOOLTIP_DESCRIPTION = Assets.loadFont("assets/fonts/frizquad.ttf", 16)
 FONT_WOW_TINY = Assets.loadFont("assets/fonts/frizquad.ttf", 15)
 FONT_WOW_VERY_TINY = Assets.loadFont("assets/fonts/frizquad.ttf", 10)
 FONT_ARIALN = Assets.loadFont("assets/fonts/arialn.ttf", 22)
-FONT_ARIALN_TINY = Assets.loadFont("assets/fonts/arialn.ttf", 15)
+FONT_ARIALN_TINY = Assets.loadFont("assets/fonts/arialn.ttf", 18)
+FONT_ARIALN_BOLD_TINY = Assets.loadFont("assets/fonts/arialnBold.ttf", 18)
 
 # # Loading Textures
 print("Loading textues...")
@@ -165,8 +168,9 @@ TEXTURE_ICON_SPELL_RENEW = Assets.loadResizedImage("assets/icons/spells/spell_re
 TEXTURE_ICON_SPELL_IMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_immolation.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/spells/spell_curseofagony.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FLASHHEAL = Assets.loadResizedImage("assets/icons/spells/spell_flashheal.png", RESIZE_SPELL)
+TEXTURE_ICON_SPELL_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_twilightImmolation.png", RESIZE_SPELL)
 
-TEXTURE_ICON_SPELL_ITEM_MASK = Assets.loadResizedImage("assets/icons/spells/item_mask.png", RESIZE_SPELL)
+TEXTURE_ICON_SPELL_ITEM_MASK = Assets.loadResizedImage("assets/inventory/spellbar/disabled_mask.png", RESIZE_SPELL)
 
 TEXTURE_ICON_EFFECT_DEBUFF_BURNING = Assets.loadResizedImage("assets/icons/effects/Debuff_Burning.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION = Assets.loadResizedImage("assets/icons/effects/Debuff_Corruption.png", RESIZE_EFFECT)
@@ -174,6 +178,7 @@ TEXTURE_ICON_EFFECT_DEBUFF_BLEEDING = Assets.loadResizedImage("assets/icons/effe
 TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_Immolation.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/effects/Debuff_CurseOfAgony.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_BUFF_RENEW = Assets.loadResizedImage("assets/icons/effects/Buff_Renew.png", RESIZE_EFFECT)
+TEXTURE_ICON_EFFECT_DEBUFF_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_twilightImmolation.png", RESIZE_EFFECT)
 
 TEXTURE_XPBAR_UI = Assets.loadImage("assets/inventory/xpbar/xpbar.png")
 TEXTURE_FRAMESTATUES_HP = Assets.loadImage("assets/framestatues/hpbar.png")
@@ -441,6 +446,7 @@ class SpellInventory(Inventory):
         for i in range(0, INVENTORY_SPELL_ITEM_COUNT):
             self.childs.append(ItemHolder(0, 0, 48, 46).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
 
+        self.childs[11].item = SpellItem("OneShotDebugAttack")
         self.childs[24].item = SpellItem("BaseAttack")
         self.childs[33].item = SpellItem("EnemyLevelUpDebugAttack")
         self.childs[34].item = SpellItem("LevelUpDebugAttack")
@@ -453,6 +459,7 @@ class SpellInventory(Inventory):
             "CurseOfAgonySpell",
             "HealDrainSpell",
             "ManaDrainSpell",
+            "TwilightImmolationSpell",
             "LifeTapSpell",
             "RenewHealingSpell",
             "FlashHealHealingSpell"
@@ -666,7 +673,7 @@ class SpellTooltip(Tooltip):
             - for default window size: 0.25% = 327 px [contained] ->> - MARGIN * 2 = 287
             - for maximized window size: 0.33% = 646 px [contained] ->> - MARGIN * 2 = 606
         """
-        line_max_pixel_count = WINDOW_WIDTH * 0.25 - (TOOLTIP_MARGIN * 2)
+        line_max_pixel_count = WINDOW_WIDTH * 0.23 - (TOOLTIP_MARGIN * 2)
 
         for item in tooltip_items:
             remaining_text = item.textValue
@@ -855,6 +862,10 @@ class LivingEntityModularBar(ModularBar):
             value = self.livingEntity.mana
             maxValue = self.livingEntity.maxMana
             targetTexture = TEXTURE_FRAMESTATUES_MANA
+        elif self.informationType == UI_MODULAR_BAR_INFO_TYPE_RAGE:
+            value = self.livingEntity.rage
+            maxValue = self.livingEntity.maxRage
+            targetTexture = TEXTURE_FRAMESTATUES_RAGE
         elif self.informationType == UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE:
             value = self.livingEntity.experience
             maxValue = self.livingEntity.maxExperience
@@ -880,11 +891,23 @@ class LivingEntityModularBar(ModularBar):
             screen.blit(self.scaledTextureContainer, (self.x, self.y))
 
         if self.selected:
-            textblack = Text(0, self.y + 1, str(value) + "/" + str(maxValue), BLACK).font(FONT_WOW_TINY).create()
-            textblack.x = self.x + ((self.width - textblack.width) / 2)
-            textblack.textOffsetY = 2
-            textblack.draw(screen)
-            text = Text(0, self.y + 1, str(value) + "/" + str(maxValue), LIGHT_GREY).font(FONT_ARIALN_TINY).create()
+            textblacky = Text(0, self.y + 2, str(value) + "/" + str(maxValue), BLACK).font(FONT_ARIALN_BOLD_TINY).create()
+            textblacky.x = self.x + ((self.width - textblacky.width) / 2)
+            textblacky.textOffsetY = 2
+            textblacky.draw(screen)
+            textblacky1 = Text(0, self.y - 2, str(value) + "/" + str(maxValue), BLACK).font(FONT_ARIALN_BOLD_TINY).create()
+            textblacky1.x = self.x + ((self.width - textblacky1.width) / 2)
+            textblacky1.textOffsetY = 2
+            textblacky1.draw(screen)
+            textblackx = Text(0, self.y, str(value) + "/" + str(maxValue), BLACK).font(FONT_ARIALN_BOLD_TINY).create()
+            textblackx.x = (self.x + 2) + ((self.width - textblackx.width) / 2)
+            textblackx.textOffsetY = 2
+            textblackx.draw(screen)
+            textblackx1 = Text(0, self.y, str(value) + "/" + str(maxValue), BLACK).font(FONT_ARIALN_BOLD_TINY).create()
+            textblackx1.x = (self.x - 2) + ((self.width - textblackx1.width) / 2)
+            textblackx1.textOffsetY = 2
+            textblackx1.draw(screen)
+            text = Text(0, self.y, str(value) + "/" + str(maxValue), LIGHT_GREY).font(FONT_ARIALN_TINY).create()
             text.x = self.x + ((self.width - text.width) / 2)
             text.textOffsetY = 2
             text.draw(screen)
@@ -918,6 +941,7 @@ class LivingEntityStatusFrame(UIContainerComponent):
         self.nameText = Text(0, 0, livingEntity.name, self.textColor).font(FONT_WOW_TINY).create()
         self.healthBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_HEALTH, livingEntity)
         self.manaBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_MANA, livingEntity)
+        self.rageBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_RAGE, livingEntity)
         self.levelText = Text(0, 0, "", self.textColor).font(FONT_WOW_TINY).create()
 
         self.childs.append(self.healthBar)
@@ -967,8 +991,10 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
         self.healthBar.height = 22
         self.manaBar.width = 197
         self.manaBar.height = 22
+        self.rageBar.width = 197
+        self.rageBar.height = 22
         self.portraitOffsetY = 78
-        self.iconsEffectOffset = (182, 113)
+        self.iconsEffectOffset = (182, 131)
 
     def tick(self):
         super().tick()
@@ -983,6 +1009,8 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
         self.healthBar.y = self.y + 67
         self.manaBar.x = self.x + 182
         self.manaBar.y = self.y + 86
+        self.rageBar.x = self.x + 182
+        self.rageBar.y = self.y + 105
         self.updateSize()
 
     def updateSize(self):
@@ -1126,16 +1154,15 @@ class Entity(GameObject):
 
 class LivingEntity(Entity):
 
-    def __init__(self, x, y, health, mana, name, level, experience):
+    def __init__(self, x, y, health, mana, rage, name, level, experience):
         Entity.__init__(self, x, y, health)
         self.mana = mana
         self.maxMana = mana
         self.baseMana = mana
         self.experience = experience
         self.maxExperience = experience
-        self.rage = 0
-        self.maxRage = 0
-        self.baseRage = 0
+        self.rage = rage
+        self.maxRage = 100
         self.name = name
         self.level = level
         self.effects = []
@@ -1147,6 +1174,13 @@ class LivingEntity(Entity):
 
     def onLevelUp(self):
         pass
+
+    def offsetRage(self, offset):
+        newRage = self.rage + offset
+        if newRage > self.maxRage:
+            newRage = self.maxRage
+
+        self.rage = newRage
 
     def offsetMana(self, offset):
         newMana = self.mana + offset
@@ -1171,8 +1205,8 @@ class LivingEntity(Entity):
 
 class Player(LivingEntity):
 
-    def __init__(self, x, y, health, mana, level, name):
-        LivingEntity.__init__(self, x, y, health, mana, name, level, 0)
+    def __init__(self, x, y, health, mana, rage, level, name):
+        LivingEntity.__init__(self, x, y, health, mana, rage, name, level, 0)
         self.texture = TEXTURE_TEST_PORTRAIT
         self.canPlay = False
         self.hasPlay = False
@@ -1180,10 +1214,15 @@ class Player(LivingEntity):
 
     def onLevelUp(self):
         self.experience = 0
+        self.maxHealth = int(self.baseHealth * self.level)
+        self.maxMana = int(self.baseMana * self.level)
+        self.health = self.maxHealth
+        self.mana = self.maxMana
 
     def tick(self):
         self.maxHealth = int(self.baseHealth * self.level)
         self.maxMana = int(self.baseMana * self.level)
+        self.maxRage = 100
         if player.level <= 28:
             self.Diff = 0
         elif player.level == 29:
@@ -1199,12 +1238,13 @@ class Player(LivingEntity):
 
         if self.experience >= self.maxExperience:
             self.levelUp()
+            
 
 
 class Enemy(LivingEntity):
 
     def __init__(self, x, y, health, level, attack):
-        LivingEntity.__init__(self, x, y, health, 0, "Enemy", level, 0)
+        LivingEntity.__init__(self, x, y, health, 0, 0, "Enemy", level, 0)
         self.attackValue = attack
         self.texture = TEXTURE_FRAME_PORTRAIT_DEMON_IMP_1
 
@@ -1302,6 +1342,24 @@ class EnemyLevelUpDebugAttack(Attack):
         ]
 
 
+
+class OneShotDebugAttack(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_TEST_ICON)
+        self.cacheTooltip = True
+
+    def use(self, player, target):
+        target.health -= target.health
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("[Debug] Oneshot"),
+            DescriptionTooltipData().text("K.O").color(YELLOW_TEXT)
+        ]
+
+
 class BaseAttack(Attack):
 
     def __init__(self):
@@ -1310,6 +1368,7 @@ class BaseAttack(Attack):
     def use(self, player, target):
         target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         player.offsetMana(7)
+        player.offsetRage(10)
 
         return ACTION_SUCCESS
 
@@ -1392,7 +1451,7 @@ class RenewHealingSpell(HealingSpell):
         return [
             TitleTooltipData().text("Renew"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Heals you of " + str(self.buffMaxHealing) + " damage over 15rounds.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Heals you of " + str(self.buffMaxHealing) + " damage over 15 rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1524,8 +1583,7 @@ class FireBallSpell(AttackSpell):
         return [
             TitleTooltipData().text("Fireball"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Hurls a fiery ball that causes " + str(self.minDamage) + " to " + str(self.MaxDamage) + " Fire damage and an").color(YELLOW_TEXT),
-            DescriptionTooltipData().text("additional " + str(self.debuffMaxDamage) + " Fire damage over 4rounds.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Hurls a fiery ball that causes " + str(self.minDamage) + " to " + str(self.MaxDamage) + " Fire damage and an additional " + str(self.debuffMaxDamage) + " Fire damage over 4 rounds.").color(YELLOW_TEXT),
         ]
 
 
@@ -1554,7 +1612,7 @@ class CorruptionSpell(AttackSpell):
         return [
             TitleTooltipData().text("Corruption"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Corrupts the target, causing " + str(self.debuffMaxDamage) + " Shadow damage over 12rounds.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Corrupts the target, causing " + str(self.debuffMaxDamage) + " Shadow damage over 12 rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1586,9 +1644,43 @@ class ImmolationSpell(AttackSpell):
         return [
             TitleTooltipData().text("Immolation"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Burns the enemy for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire").color(YELLOW_TEXT),
-             DescriptionTooltipData().text("damage over 15rounds.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Burns the enemy for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire damage over 15 rounds.").color(YELLOW_TEXT),
         ]
+
+
+
+class TwilightImmolationSpell(AttackSpell):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_SPELL_TWILIGHTIMMOLATION)
+        self.cacheToolTip = False
+
+    def tick(self):
+        self.cost = 30  # TODO : Ajouter la vraie fonction plus tard
+        self.damage = 5  # TODO : Ajouter la vraie fonction plus tard
+        self.amount = 3  # TODO : Ajouter la vraie fonction plus tard
+        self.debuffMaxDamage = self.amount * 3  # TODO : Ajouter la vraie fonction plus tard
+
+    def use(self, player, target):
+        if not self.hasEnought(player):
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
+
+        player.mana -= self.cost
+
+        player.offsetHealth(self.damage)
+        target.health -= self.damage
+
+        target.giveEffect(TwilightImmolationDebuffEffect(self))
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Twilight Immolation"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Burns the enemy with a Twilight flame for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire damage over 6 rounds. Your immolation have a chance to give you as much health as damage you inflict to the enemy.").color(YELLOW_TEXT),
+        ]
+
 
 
 class CurseOfAgonySpell(AttackSpell):
@@ -1616,7 +1708,7 @@ class CurseOfAgonySpell(AttackSpell):
         return [
             TitleTooltipData().text("Curse of Agony"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Curses the target with agony, causing " + str(self.debuffMaxDamage) + " Shadow damage over 24rounds. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse can be active on any one target.").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("Curses the target with agony, causing " + str(self.debuffMaxDamage) + " Shadow damage over 24 rounds. This damage is dealt slowly at first, and builds up as the Curse reaches its full duration. Only one Curse can be active on any one target.").color(YELLOW_TEXT)
         ]
 
 
@@ -1805,7 +1897,7 @@ class BurningDebuffEffect(DebuffEffect):
         self.maxDebuffDamage = int(fireBallSpell.debuffMaxDamage / 2)
 
     def execute(self, livingEntity):
-        if self.remainingTime == 3 or self.remainingTime == 1:
+        if self.remainingTime % 2 == 1:
             livingEntity.health -= self.maxDebuffDamage
 
         self.finishExecute()
@@ -1819,12 +1911,27 @@ class ImmolationDebuffEffect(DebuffEffect):
         self.amount = immolationSpell.amount
 
     def execute(self, livingEntity):
-        if self.remainingTime == 13 or self.remainingTime == 10 or self.remainingTime == 7 or self.remainingTime == 4 or self.remainingTime == 1:
+        if self.remainingTime % 2 == 1:
             livingEntity.health -= self.amount
 
         self.finishExecute()
         return True
 
+
+class TwilightImmolationDebuffEffect(DebuffEffect):
+
+    def __init__(self, immolationSpell):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_TWILIGHTIMMOLATION, 6)
+        self.amount = immolationSpell.amount
+
+    def execute(self, livingEntity):
+        if self.remainingTime % 2 == 1:
+            if random.randint(1, 10) != random.randint(1, 10):
+                player.offsetHealth(self.amount) # TODO: C'est le caster qui a engendré le debuff sur son adversaire qui "draine" les pv
+                livingEntity.health -= self.amount
+
+        self.finishExecute()
+        return True
 
 class CorruptionDebuffEffect(DebuffEffect):
 
@@ -1949,7 +2056,7 @@ class ItemMovingSystem(Tickable, Drawable):
 
 uiManager = UIManager(pygame.time.Clock())
 itemMovingSystem = ItemMovingSystem(uiManager)
-player = Player(75, 600, 100 , 100, 1, "Hero")
+player = Player(75, 600, 100, 100, 0, 1, "Hero")
 gameLogic = GameLogic(player)
 player.target = Enemy(50, 50, 100, 1, 1)
 
