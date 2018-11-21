@@ -3,6 +3,7 @@ import random
 import sys
 import time
 import pygame
+from pygame.gp2x.constants import BUTTON_LEFT
 
 # the Pygame docs say size(text) -> (width, height)
 # PYGAME
@@ -14,19 +15,25 @@ MOUSE_RIGHT = 3
 ACTION_REPLAY = -2
 ACTION_SUCCESS = -1
 SPELL_ERROR_REASON_NOT_ENOUGHT_MANA = 0
-SPELL_ERROR_REASON_NOT_ENOUGHT_PLACE = 1
+SPELL_ERROR_REASON_NOT_ENOUGHT_SPACE = 1
 SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT = 2
 SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY = 3
 SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA = 4
-SPELL_ERROR_REASON_I_CANT_DO_THIS = 5
+SPELL_ERROR_REASON_YOU_CANT_DO_THIS = 5
 
 SPELL_ERROR_TRADUCTION = {
-    SPELL_ERROR_REASON_NOT_ENOUGHT_MANA: "Not enought mana.",
-    SPELL_ERROR_REASON_NOT_ENOUGHT_PLACE: "Not enought place.",
-    SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT: "Not enought skillpoint.",
-    SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY: "Not enought money.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_MANA: "You don't have enought mana.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_SPACE: "You don't have enought space.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT: "You don't have enought skillpoint.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY: "You don't have enought money.",
     SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA: "Enemy has not enought mana.",
-    SPELL_ERROR_REASON_I_CANT_DO_THIS: "I cant do this now.",
+    SPELL_ERROR_REASON_YOU_CANT_DO_THIS: "You cant do this now.",
+}
+
+ERROR_CANT_PLACE_ITEM_HERE = 0
+
+ERROR_TRANSLATION = {
+    ERROR_CANT_PLACE_ITEM_HERE: "You can't move this item in this inventory."
 }
 
 # MODULAR
@@ -155,6 +162,7 @@ TEXTURE_BACKGROUND_TEST = Assets.loadImage("assets/background/test.png")
 TEXTURE_INVENTORY_SPELL_HOLDER = Assets.loadImage("assets/inventory/spellbar/holder.png")
 TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventory/spellbar/holder_border.png", (48, 50))
 TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
+TEXTURE_INVENTORY_BAG_HOLDER_BACKGROUND = Assets.loadResizedImage("assets/inventory/bag/ui/bagHolderBg.png", (50, 50))
 
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/spell_baseattack.png", RESIZE_SPELL)
@@ -178,6 +186,13 @@ TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION = Assets.loadResizedImage("assets/icons/ef
 TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/effects/Debuff_CurseOfAgony.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_BUFF_RENEW = Assets.loadResizedImage("assets/icons/effects/Buff_Renew.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_twilightImmolation.png", RESIZE_EFFECT)
+
+TEXTURE_INVENTORY_BAG_BACKGROUND_2x4 = Assets.loadImage("assets/inventory/bag/ui/bag_2x4.png")
+TEXTURE_INVENTORY_BAG_BACKGROUND_3x4 = Assets.loadImage("assets/inventory/bag/ui/bag_3x4.png")
+TEXTURE_INVENTORY_BAG_BACKGROUND_4x4 = Assets.loadImage("assets/inventory/bag/ui/bag_4x4.png")
+TEXTURE_INVENTORY_BAG_BACKGROUND_5x4 = Assets.loadImage("assets/inventory/bag/ui/bag_5x4.png")
+
+TEXTURE_UI_ELEMENT_CLOSE_BUTTON = Assets.loadImage("assets/inventory/buttons/closebutton.png")
 
 TEXTURE_XPBAR_UI = Assets.loadImage("assets/inventory/xpbar/xpbar.png")
 TEXTURE_FRAMESTATUES_HP = Assets.loadImage("assets/framestatues/hpbar.png")
@@ -246,13 +261,20 @@ class GameObject(Drawable, Tickable):
         self.y = y
         self.xVelocity = 0
         self.yVelocity = 0
+    
+    def move(self, x, y):
+        self.x = x
+        self.y = y
+        return self
 
     def applyVelocity(self, x, y):
         self.xVelocity = x
         self.yVelocity = y
+        return self
 
     def resetVelocity(self):
         self.applyVelocity(0, 0)
+        return self
 
     def tick(self):
         self.x += self.xVelocity * 0.72
@@ -435,6 +457,83 @@ class Inventory(UIContainerComponent):
         UIContainerComponent.__init__(self, x, y, width, height)
         self.backgroundTexture = backgroundTexture
 
+        if backgroundTexture != None:
+            self.width, self.height = backgroundTexture.get_rect().size
+
+    def draw(self, screen):
+        super().draw(screen)
+        if self.backgroundTexture != None:
+            screen.blit(self.backgroundTexture, (self.x, self.y))
+
+
+class ItemInventory(Inventory):
+
+    def __init__(self, backgroundTexture, player, row, column):
+        Inventory.__init__(self, 0, 0, 0, 0, backgroundTexture)
+        self.player = player
+        self.row = row
+        self.column = column
+
+        for i in range(0, row * column):
+            self.childs.append(self.createItemHolderUnit(i))
+
+    def updateButtons(self):
+        k = 0
+        for i in range(0, self.row):
+            for j in range(1, self.column + 1):
+                holder = self.childs[k]
+                holder.x = self.x + ((j - 1) * 49)
+                holder.y = self.y + (50 * i)
+                k += 1
+
+    def createItemHolderUnit(self, index):
+        return SimpleItemHolder(0, 0).text(str(index)).texture(TEXTURE_INVENTORY_SPELL_HOLDER)
+
+
+class BagItemInventory(ItemInventory):
+
+    def __init__(self, player, row, column):  # ex 2, 4
+        constantName = "TEXTURE_INVENTORY_BAG_BACKGROUND_" + str(row) + "x" + str(column)
+        if constantName not in globals():
+            raise ValueError("Bag inventory with size row x column: {}x{} is not available".format(str(row), str(column)))
+        ItemInventory.__init__(self, globals()[constantName], player, row, column)
+
+        # Close button
+        self.childs.append(Button(0, 0, 23, 22).texture(TEXTURE_UI_ELEMENT_CLOSE_BUTTON).clickFunction(self.closeSelf))
+
+        self.updateButtons()
+
+    def closeSelf(self, button, pressed):
+        if button == MOUSE_LEFT and not pressed:
+            uiManager.components.remove(self)
+
+    def updateButtons(self):
+        offsetX = 99
+        offsetY = 59
+
+        k = -1
+        for column in range(0, self.column):
+            for row in range(0, self.row):
+                k += 1
+
+                rowOffset = 0.75 * row
+                columnOffset = 3 * column
+
+                holder = self.childs[k]
+                holder.x = self.x + offsetX + columnOffset + ((column) * 49)
+                holder.y = self.y + offsetY + rowOffset + (50 * row)
+
+        closeButton = self.childs[k + 1]
+        closeButton.x = self.x + 284
+        closeButton.y = self.y + 10
+
+    def onScreenResize(self, newScreenWidth, newScreenHeight):
+        super().onScreenResize(newScreenWidth, newScreenHeight)
+        self.updateButtons()
+
+    def createItemHolderUnit(self, index):
+        return SimpleItemHolder(0, 0).text(str(index))
+
 
 class SpellInventory(Inventory):
 
@@ -443,7 +542,7 @@ class SpellInventory(Inventory):
         self.player = player
 
         for i in range(0, INVENTORY_SPELL_ITEM_COUNT):
-            self.childs.append(ItemHolder(0, 0, 48, 46).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
+            self.childs.append(SpellItemHolder(0, 0).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
 
         self.childs[11].item = SpellItem("OneShotDebugAttack")
         self.childs[24].item = SpellItem("BaseAttack")
@@ -553,6 +652,11 @@ class Button(UIComponent):
 
     def __init__(self, x, y, width, height):
         UIComponent.__init__(self, x, y, width, height)
+        self.onClickFonction = None
+
+    def clickFunction(self, onClickFonction):
+        self.onClickFonction = onClickFonction
+        return self
 
     def text(self, buttonText):
         self.buttonText = buttonText
@@ -566,9 +670,15 @@ class Button(UIComponent):
         self.buttonTexture = buttonTexture
         return self
 
+    def onClick(self, button, pressed):
+        super().onClick(button, pressed)
+
+        if self.onClickFonction != None:
+            self.onClickFonction(button, pressed)
+
     def draw(self, screen):
         super().draw(screen)
-        if hasattr(self, 'buttonTexture'):
+        if hasattr(self, 'buttonTexture') and not self.shouldDrawBorder:
             screen.blit(self.buttonTexture, (self.x, self.y))
         if hasattr(self, 'buttonText'):
             color = WHITE
@@ -576,9 +686,6 @@ class Button(UIComponent):
                 color = self.buttonTextColor
             size = FONT_WOW_TINY.size(str(self.buttonText))
             screen.blit(FONT_WOW_TINY.render(str(self.buttonText), 1, color), (self.x + self.width - size[1], self.y))
-        if self.selected:
-            screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
-            # pygame.draw.rect(screen, (40, 95, 220), (self.x, self.y, self.width, self.height), 2)
 
 
 class ItemHolder(Button):
@@ -626,16 +733,56 @@ class ItemHolder(Button):
     def draw(self, screen):
         super().draw(screen)
         if self.item != None:
-            screen.blit(self.item.texture, (self.x, self.y))
-            screen.blit(TEXTURE_INVENTORY_SPELL_HOLDER_BORDER, (self.x, self.y))
-            if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player):
-                screen.blit(TEXTURE_ICON_SPELL_ITEM_MASK, (self.x, self.y))
-            if self.selected:
-                screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
-            if self.maintained:
-                screen.blit(TEXTURE_INVENTORY_SPELL_HOLDCLICK, (self.x + 2, self.y + 3))
+            if not self.shouldDrawBorder:
+                screen.blit(self.item.texture, (self.x, self.y))
+                screen.blit(TEXTURE_INVENTORY_SPELL_HOLDER_BORDER, (self.x, self.y))
+                if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player):
+                    screen.blit(TEXTURE_ICON_SPELL_ITEM_MASK, (self.x, self.y))
+                if self.selected:
+                    screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
+                if self.maintained:
+                    screen.blit(TEXTURE_INVENTORY_SPELL_HOLDCLICK, (self.x + 2, self.y + 3))
+            else:
+                screen.blit(pygame.transform.scale(self.item.texture, (20, 20)), (self.x, self.y))
+
+        if self.selected and not self.shouldDrawBorder:
+            screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
             # x = (w - ww) / 2;
             # y = (h - hh) / 2;
+
+    def getSupportedItemClasses(self):
+        return [ ]
+
+
+class SpellItemHolder(ItemHolder):
+
+    def __init__(self, x, y):
+        ItemHolder.__init__(self, x, y, 48, 46)
+
+    def getSupportedItemClasses(self):
+        return [
+            SpellItem
+        ]
+
+
+class SimpleItemHolder(ItemHolder):
+
+    def __init__(self, x, y):
+        ItemHolder.__init__(self, x, y, 48, 46)
+
+    def getSupportedItemClasses(self):
+        return [
+            Item
+        ]
+
+
+class NothingItemHolder(ItemHolder):
+
+    def __init__(self, x, y):
+        ItemHolder.__init__(self, x, y, 48, 46)
+
+    def getSupportedItemClasses(self):
+        return [ ]
 
 
 class Tooltip(UIComponent):
@@ -2013,6 +2160,15 @@ class ItemMovingSystem(Tickable, Drawable):
             self.resetValues()
             return False
 
+        # Check if moving item class is in ItemHolder's item compatible class list
+        isClassCompatible = False
+        for itemSubclass in newItemHolder.getSupportedItemClasses():
+            if isinstance(self.movingItem, itemSubclass):
+                isClassCompatible = True
+                break
+        if not isClassCompatible:
+            return False
+
         actualItem = newItemHolder.item
         swapMovingItem = self.movingItem
 
@@ -2070,7 +2226,9 @@ gameLogic.gameObjects.append(player.target)
 uiManager.components.append(SpellInventory(player))
 uiManager.components.append(BottomLivingEntityExperienceBar(player))
 uiManager.components.append(PlayerEntityStatusFrame(player))
-# uiManager.components.append(ItemHolder(WINDOW_WIDTH / 2 - 8, WINDOW_HEIGHT / 2 - 8, 49, 49))
+# uiManager.components.append(NothingItemHolder(WINDOW_WIDTH / 2 - 8, WINDOW_HEIGHT / 2 - 8))
+uiManager.components.append(BagItemInventory(player, 2, 4).move(150, 150).drawBorder(True))
+uiManager.components.append(BagItemInventory(player, 4, 4).move(500, 150).drawBorder(True))
 
 uiManager.enemyFrame = EnemyEntityStatusFrame(player.target)
 uiManager.components.append(uiManager.enemyFrame)
@@ -2090,6 +2248,8 @@ def loop():
 
 
 def afterLoop():
+    pass
+    '''
     if not player.target.isDead():
         Text(50, 350, "Enemy: " + str(player.target.health) + "/" + str(player.target.maxHealth), RED).create().draw(screen)
         Text(200, 350, "mana: " + str(player.target.mana) + "/" + str(player.target.maxMana), WHITE).create().draw(screen)
@@ -2102,6 +2262,7 @@ def afterLoop():
         Text(200, 400, "mana: " + str(player.mana) + "/" + str(player.maxMana), WHITE).create().draw(screen)
     else:
         Text(50, 400, "Player is dead (actual: " + str(player.health) + ")", RED).create().draw(screen)
+    '''
 
 
 def handleEvent(event):
