@@ -35,7 +35,6 @@ UI_MODULAR_BAR_INFO_TYPE_MANA = 1
 UI_MODULAR_BAR_INFO_TYPE_RAGE = 2
 UI_MODULAR_BAR_INFO_TYPE_EXPERIENCE = 3
 
-
 # COST
 COST_HEALTH = 0
 COST_MANA = 1
@@ -939,10 +938,10 @@ class LivingEntityStatusFrame(UIContainerComponent):
         self.iconsEffectOffset = (0, 0)
 
         self.nameText = Text(0, 0, livingEntity.name, self.textColor).font(FONT_WOW_TINY).create()
+        self.levelText = Text(0, 0, "", self.textColor).font(FONT_WOW_TINY).create()
+
         self.healthBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_HEALTH, livingEntity)
         self.manaBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_MANA, livingEntity)
-        self.rageBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_RAGE, livingEntity)
-        self.levelText = Text(0, 0, "", self.textColor).font(FONT_WOW_TINY).create()
 
         self.childs.append(self.healthBar)
         self.childs.append(self.manaBar)
@@ -986,6 +985,10 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
 
     def __init__(self, player):
         LivingEntityStatusFrame.__init__(self, 0, 0, TEXTURE_FRAME_PLAYER, player)
+
+        self.rageBar = LivingEntityModularBar(0, 0, 20, 20, UI_MODULAR_BAR_INFO_TYPE_RAGE, player)
+        self.childs.append(self.rageBar)
+
         self.onScreenResize(-1, -1)
         self.healthBar.width = 197
         self.healthBar.height = 22
@@ -1010,7 +1013,7 @@ class PlayerEntityStatusFrame(LivingEntityStatusFrame):
         self.manaBar.x = self.x + 182
         self.manaBar.y = self.y + 86
         self.rageBar.x = self.x + 182
-        self.rageBar.y = self.y + 105
+        self.rageBar.y = self.y + 103
         self.updateSize()
 
     def updateSize(self):
@@ -1029,6 +1032,8 @@ class EnemyEntityStatusFrame(LivingEntityStatusFrame):
         self.manaBar.height = 22
         self.portraitOffsetY = 258
         self.iconsEffectOffset = (51, 113)
+
+        self.updateColorFromLevel()
 
     def tick(self):
         super().tick()
@@ -1238,7 +1243,6 @@ class Player(LivingEntity):
 
         if self.experience >= self.maxExperience:
             self.levelUp()
-            
 
 
 class Enemy(LivingEntity):
@@ -1250,6 +1254,7 @@ class Enemy(LivingEntity):
 
     def attack(self, player):
         player.health -= self.attackValue * self.level
+       # player.offsetRage(random.randint(1, 3))  TODO : Formule rage par coups
 
     # def draw(self, screen):
     #    screen.blit(self.texture, (self.x, self.y));
@@ -1342,7 +1347,6 @@ class EnemyLevelUpDebugAttack(Attack):
         ]
 
 
-
 class OneShotDebugAttack(Attack):
 
     def __init__(self):
@@ -1368,8 +1372,7 @@ class BaseAttack(Attack):
     def use(self, player, target):
         target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         player.offsetMana(7)
-        player.offsetRage(10)
-
+        player.offsetRage(random.randint(1, 3))
         return ACTION_SUCCESS
 
     def createTooltipData(self):
@@ -1648,7 +1651,6 @@ class ImmolationSpell(AttackSpell):
         ]
 
 
-
 class TwilightImmolationSpell(AttackSpell):
 
     def __init__(self):
@@ -1680,7 +1682,6 @@ class TwilightImmolationSpell(AttackSpell):
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
             DescriptionTooltipData().text("Burns the enemy with a Twilight flame for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire damage over 6 rounds. Your immolation have a chance to give you as much health as damage you inflict to the enemy.").color(YELLOW_TEXT),
         ]
-
 
 
 class CurseOfAgonySpell(AttackSpell):
@@ -1787,7 +1788,6 @@ class GameLogic(Drawable, Tickable):
 
             self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 0), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard
             self.gameObjects.append(player.target)
-            print (self.player.target.level)
 
             uiManager.components.remove(uiManager.enemyFrame)
             uiManager.enemyFrame = EnemyEntityStatusFrame(self.player.target)
@@ -1927,11 +1927,12 @@ class TwilightImmolationDebuffEffect(DebuffEffect):
     def execute(self, livingEntity):
         if self.remainingTime % 2 == 1:
             if random.randint(1, 10) != random.randint(1, 10):
-                player.offsetHealth(self.amount) # TODO: C'est le caster qui a engendré le debuff sur son adversaire qui "draine" les pv
+                player.offsetHealth(self.amount)  # TODO: C'est le caster qui a engendre le debuff sur son adversaire qui "draine" les pv
                 livingEntity.health -= self.amount
 
         self.finishExecute()
         return True
+
 
 class CorruptionDebuffEffect(DebuffEffect):
 
@@ -2092,6 +2093,7 @@ def afterLoop():
     if not player.target.isDead():
         Text(50, 350, "Enemy: " + str(player.target.health) + "/" + str(player.target.maxHealth), RED).create().draw(screen)
         Text(200, 350, "mana: " + str(player.target.mana) + "/" + str(player.target.maxMana), WHITE).create().draw(screen)
+        Text(350, 350, "origin: " + str(player.target), GREEN).create().draw(screen)
     else:
         Text(50, 350, "Enemy is dead (actual: " + str(player.target.health) + ")", RED).create().draw(screen)
 
