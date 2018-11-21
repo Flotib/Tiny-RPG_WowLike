@@ -20,6 +20,7 @@ SPELL_ERROR_REASON_NOT_ENOUGHT_SKILLPOINT = 2
 SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY = 3
 SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA = 4
 SPELL_ERROR_REASON_YOU_CANT_DO_THIS = 5
+SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE = 6
 
 SPELL_ERROR_TRADUCTION = {
     SPELL_ERROR_REASON_NOT_ENOUGHT_MANA: "You don't have enought mana.",
@@ -28,6 +29,7 @@ SPELL_ERROR_TRADUCTION = {
     SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY: "You don't have enought money.",
     SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA: "Enemy has not enought mana.",
     SPELL_ERROR_REASON_YOU_CANT_DO_THIS: "You cant do this now.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE: "You don't have enought rage.",
 }
 
 ERROR_CANT_PLACE_ITEM_HERE = 0
@@ -164,8 +166,9 @@ TEXTURE_INVENTORY_SPELL_HOLDER_BORDER = Assets.loadResizedImage("assets/inventor
 TEXTURE_INVENTORY_SPELL_HOLDCLICK = Assets.loadResizedImage("assets/inventory/spellbar/Hold_click.png", (45, 45))
 TEXTURE_INVENTORY_BAG_HOLDER_BACKGROUND = Assets.loadResizedImage("assets/inventory/bag/ui/bagHolderBg.png", (50, 50))
 
+TEXTURE_ICON_ABILITY_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/ability_baseattack.png", RESIZE_SPELL)
+TEXTURE_ICON_ABILITY_REND = Assets.loadResizedImage("assets/icons/spells/ability_rend.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
-TEXTURE_ICON_SPELL_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/spell_baseattack.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_LIFEDRAIN = Assets.loadResizedImage("assets/icons/spells/spell_lifedrain.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FIREBALL = Assets.loadResizedImage("assets/icons/spells/spell_fireball.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_CORRUPTION = Assets.loadResizedImage("assets/icons/spells/spell_corruption.png", RESIZE_SPELL)
@@ -546,6 +549,7 @@ class SpellInventory(Inventory):
 
         self.childs[11].item = SpellItem("OneShotDebugAttack")
         self.childs[24].item = SpellItem("BaseAttack")
+        self.childs[25].item = SpellItem("RendAttack")
         self.childs[33].item = SpellItem("EnemyLevelUpDebugAttack")
         self.childs[34].item = SpellItem("LevelUpDebugAttack")
         self.childs[35].item = SpellItem("NothingAttack")
@@ -1415,7 +1419,7 @@ class Action(Tickable):
         self.tooltipData = None
         self.cacheTooltip = True
         self.cost = 0
-        self.costType = COST_MANA
+        self.costType = COST_MANA  # TODO: Rendre le costType différent selon la class
         self.damage = 0
         self.minDamage = 0
         self.maxDamage = 0
@@ -1514,7 +1518,8 @@ class OneShotDebugAttack(Attack):
 class BaseAttack(Attack):
 
     def __init__(self):
-        Action.__init__(self, TEXTURE_ICON_SPELL_BASEATTACK)
+        Action.__init__(self, TEXTURE_ICON_ABILITY_BASEATTACK)
+        self.cacheTooltip = False
 
     def use(self, player, target):
         target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
@@ -1525,6 +1530,35 @@ class BaseAttack(Attack):
     def createTooltipData(self):
         return [
             TitleTooltipData().text("Attack"),
+        ]
+
+
+class RendAttack(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_ABILITY_REND)
+        self.cacheTooltip = False
+
+    def tick(self):
+        self.cost = 10
+        self.amount = 5
+        self.debuffMaxDamage = 15 # TODO: maths function
+
+    def use(self, player, target):
+        if player.rage < 10:     # TODO: Use "hasEnought" later
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
+
+        player.rage -= 10
+
+        target.giveEffect(BleedingRendEffect(self))
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Rend"),
+            DescriptionTooltipData().text("Rage : " + str(self.cost)),
+            DescriptionTooltipData().text("Wounds the target causing them to bleed for " + str(self.debuffMaxDamage) + " damage over 9 rounds.").color(YELLOW_TEXT)
         ]
 
 
@@ -1543,6 +1577,7 @@ class NothingAttack(Attack):
 
 class Spell(Action):
     pass
+
 
 
 class LifeTapSpell(Spell):
@@ -2035,6 +2070,20 @@ class RenewRegenBuffEffect(BuffEffect):
 
 class DebuffEffect(TimedEffect):
     pass
+
+
+class BleedingRendEffect(DebuffEffect):
+
+    def __init__(self, rendAttack):
+        DebuffEffect.__init__(self, TEXTURE_ICON_EFFECT_DEBUFF_BLEEDING, 9)
+        self.amount = rendAttack.amount
+
+    def execute(self, livingEntity):
+        if self.remainingTime == 7 or self.remainingTime == 4 or self.remainingTime == 1:
+            livingEntity.health -= self.amount
+
+        self.finishExecute()
+        return True
 
 
 class BurningDebuffEffect(DebuffEffect):
