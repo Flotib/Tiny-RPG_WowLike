@@ -1104,6 +1104,8 @@ class LivingEntityStatusFrame(UIContainerComponent):
 
         if self.textColor != LEVEL_DIFFICULTY_DEAD_SKULL:
             self.levelText.text(str(self.livingEntity.level), self.textColor)
+        elif self.textColor == LEVEL_DIFFICULTY_DEAD_SKULL:
+            self.levelText.text(str(1), (0, 0, 0))
 
     def draw(self, screen):
         super().draw(screen)
@@ -1114,7 +1116,7 @@ class LivingEntityStatusFrame(UIContainerComponent):
         self.nameText.draw(screen)
 
         if self.textColor == LEVEL_DIFFICULTY_DEAD_SKULL:
-            screen.blit(TEXTURE_LEVEL_SKULL, (self.levelText.x + 1, self.levelText.y - 2))
+            screen.blit(TEXTURE_LEVEL_SKULL, (self.levelText.x - 6, self.levelText.y - 3))          #(self.levelText.x + 1, self.levelText.y - 2)) ---or--- (1166, 128))
         else:
             self.levelText.draw(screen)
 
