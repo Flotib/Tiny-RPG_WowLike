@@ -170,6 +170,7 @@ TEXTURE_INVENTORY_BAG_HOLDER_BACKGROUND = Assets.loadResizedImage("assets/invent
 
 TEXTURE_ICON_ABILITY_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/ability_baseattack.png", RESIZE_SPELL)
 TEXTURE_ICON_ABILITY_REND = Assets.loadResizedImage("assets/icons/spells/ability_rend.png", RESIZE_SPELL)
+TEXTURE_ICON_ABILITY_HEROICSTRIKE = Assets.loadResizedImage("assets/icons/spells/ability_heroicstrike.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_LIFEDRAIN = Assets.loadResizedImage("assets/icons/spells/spell_lifedrain.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FIREBALL = Assets.loadResizedImage("assets/icons/spells/spell_fireball.png", RESIZE_SPELL)
@@ -614,7 +615,8 @@ class SpellInventory(Inventory):
 
         self.holders[11].item = SpellItem("OneShotDebugAttack")
         self.holders[24].item = SpellItem("BaseAttack")
-        self.holders[25].item = SpellItem("RendAttack")
+        self.holders[25].item = SpellItem("HeroicStrikeAttack")
+        self.holders[26].item = SpellItem("RendAttack")
         self.holders[33].item = SpellItem("EnemyLevelUpDebugAttack")
         self.holders[34].item = SpellItem("LevelUpDebugAttack")
         self.holders[35].item = SpellItem("NothingAttack")
@@ -1600,6 +1602,38 @@ class BaseAttack(Attack):
         return [
             TitleTooltipData().text("Attack"),
         ]
+
+
+
+class HeroicStrikeAttack(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_ABILITY_HEROICSTRIKE)
+        self.cacheTooltip = False
+        self.cost = 15
+        self.costType = COST_RAGE
+
+    def tick(self):
+        self.amount = 11 # TODO: maths function
+
+    def use(self, player, target):
+        if not self.hasEnought(player):
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
+
+        player.offsetRage(-15)
+
+        damage = random.randint(3, 5) + self.amount   # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        target.health -= damage
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Heroic Strike"),
+            DescriptionTooltipData().text("Rage : " + str(self.cost)),
+            DescriptionTooltipData().text("A strong attack that increases melee damage by " + str(self.amount) + ".").color(YELLOW_TEXT)
+        ]
+
 
 
 class RendAttack(Attack):
