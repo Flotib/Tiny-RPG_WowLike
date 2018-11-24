@@ -23,6 +23,7 @@ SPELL_ERROR_REASON_NOT_ENOUGHT_MONEY = 3
 SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA = 4
 SPELL_ERROR_REASON_YOU_CANT_DO_THIS = 5
 SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE = 6
+SPELL_ERROR_REASON_NOT_ENOUGHT_HEALTH = 7
 
 SPELL_ERROR_TRADUCTION = {
     SPELL_ERROR_REASON_NOT_ENOUGHT_MANA: "You don't have enought mana.",
@@ -32,6 +33,7 @@ SPELL_ERROR_TRADUCTION = {
     SPELL_ERROR_REASON_ENEMY_NOT_ENOUGHT_MANA: "Enemy has not enought mana.",
     SPELL_ERROR_REASON_YOU_CANT_DO_THIS: "You cant do this now.",
     SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE: "You don't have enought rage.",
+    SPELL_ERROR_REASON_NOT_ENOUGHT_HEALTH: "You don't have enought health.",
 }
 
 ERROR_CANT_PLACE_ITEM_HERE = 0
@@ -171,6 +173,7 @@ TEXTURE_INVENTORY_BAG_HOLDER_BACKGROUND = Assets.loadResizedImage("assets/invent
 TEXTURE_ICON_ABILITY_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/ability_baseattack.png", RESIZE_SPELL)
 TEXTURE_ICON_ABILITY_REND = Assets.loadResizedImage("assets/icons/spells/ability_rend.png", RESIZE_SPELL)
 TEXTURE_ICON_ABILITY_HEROICSTRIKE = Assets.loadResizedImage("assets/icons/spells/ability_heroicstrike.png", RESIZE_SPELL)
+TEXTURE_ICON_ABILITY_BLOODRAGE = Assets.loadResizedImage("assets/icons/spells/ability_bloodrage.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_LIFEDRAIN = Assets.loadResizedImage("assets/icons/spells/spell_lifedrain.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FIREBALL = Assets.loadResizedImage("assets/icons/spells/spell_fireball.png", RESIZE_SPELL)
@@ -190,8 +193,9 @@ TEXTURE_ICON_EFFECT_DEBUFF_CORRUPTION = Assets.loadResizedImage("assets/icons/ef
 TEXTURE_ICON_EFFECT_DEBUFF_BLEEDING = Assets.loadResizedImage("assets/icons/effects/Debuff_Bleeding.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_IMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_Immolation.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/effects/Debuff_CurseOfAgony.png", RESIZE_EFFECT)
-TEXTURE_ICON_EFFECT_BUFF_RENEW = Assets.loadResizedImage("assets/icons/effects/Buff_Renew.png", RESIZE_EFFECT)
 TEXTURE_ICON_EFFECT_DEBUFF_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/effects/Debuff_twilightImmolation.png", RESIZE_EFFECT)
+TEXTURE_ICON_EFFECT_BUFF_RENEW = Assets.loadResizedImage("assets/icons/effects/Buff_Renew.png", RESIZE_EFFECT)
+TEXTURE_ICON_EFFECT_BUFF_BLOODRAGE = Assets.loadResizedImage("assets/icons/effects/Buff_BloodRage.png", RESIZE_EFFECT)
 
 TEXTURE_INVENTORY_BAG_BACKGROUND_2x4 = Assets.loadImage("assets/inventory/bag/ui/bag_2x4.png")
 TEXTURE_INVENTORY_BAG_BACKGROUND_3x4 = Assets.loadImage("assets/inventory/bag/ui/bag_3x4.png")
@@ -617,6 +621,7 @@ class SpellInventory(Inventory):
         self.holders[24].item = SpellItem("BaseAttack")
         self.holders[25].item = SpellItem("HeroicStrikeAttack")
         self.holders[26].item = SpellItem("RendAttack")
+        self.holders[28].item = SpellItem("BloodRageAttack")
         self.holders[33].item = SpellItem("EnemyLevelUpDebugAttack")
         self.holders[34].item = SpellItem("LevelUpDebugAttack")
         self.holders[35].item = SpellItem("NothingAttack")
@@ -1483,7 +1488,7 @@ class Enemy(LivingEntity):
     #    screen.blit(FONT.render(str("self.name"), 1, (255,255,255)), (self.x, self.y - 10))
 
 
-class Action(Tickable):
+class Action(Tickable): #TODO: Add Cooldown for spells to prevent the trigger of a spell
 
     def __init__(self, icon):
         self.icon = icon
@@ -1595,7 +1600,7 @@ class BaseAttack(Attack):
     def use(self, player, target):
         target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         player.offsetMana(7)
-        player.offsetRage(random.randint(1, 3))
+        player.offsetRage(random.randint(2,4))
         return ACTION_SUCCESS
 
     def createTooltipData(self):
@@ -1666,6 +1671,39 @@ class RendAttack(Attack):
         ]
 
 
+
+class BloodRageAttack(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_ABILITY_BLOODRAGE)
+        self.cacheTooltip = False
+        self.costType = COST_HEALTH
+
+    def tick(self):
+        self.cost = int(player.maxHealth * 0.16)
+        self.amount = 20
+
+    def use(self, player, target):
+        if not self.hasEnought(player):
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_HEALTH
+
+        player.offsetHealth(-self.cost)
+        player.offsetRage(self.amount)
+
+        player.giveEffect(BloodRageEffect(self))
+
+        return ACTION_REPLAY
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Bloodrage "),
+            DescriptionTooltipData().text("16% of base Health"),
+            DescriptionTooltipData().text("Instant"),
+            DescriptionTooltipData().text("Generates " + str(self.amount) + " rage at the cost of health, and then generates an additional 10 rage over 10 sec.").color(YELLOW_TEXT)
+        ]
+
+
+
 class NothingAttack(Attack):
 
     def __init__(self):
@@ -1688,12 +1726,17 @@ class LifeTapSpell(Spell):
     def __init__(self):
         Action.__init__(self, TEXTURE_ICON_SPELL_LIFETAP)
         self.cacheTooltip = False
+        self.cost = 20  # TODO: Fonction liee au lvl du joueur
+        self.costType = COST_HEALTH
 
     def tick(self):
-        self.amount = 20  # TODO: Fonction liee au lvl du joueur
+        self.amount = self.cost  # TODO: Fonction liee au lvl du joueur
 
     def use(self, player, target):
-        player.health -= self.amount
+        if not self.hasEnought(player):
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_HEALTH
+            
+        player.offsetHealth(-self.cost)
         player.offsetMana(self.amount)
 
         return ACTION_REPLAY
@@ -1702,7 +1745,7 @@ class LifeTapSpell(Spell):
         return [
             TitleTooltipData().text("Life Tap"),
             DescriptionTooltipData().text("Instant"),
-            DescriptionTooltipData().text("Converts " + str(self.amount) + " health into " + str(self.amount) + " mana.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Converts " + str(self.cost) + " health into " + str(self.amount) + " mana.").color(YELLOW_TEXT),
         ]
 
 
@@ -2166,6 +2209,17 @@ class RenewRegenBuffEffect(BuffEffect):
 
     def execute(self, livingEntity):
         livingEntity.offsetHealth(self.amount)
+
+        self.finishExecute()
+        return True
+
+class BloodRageEffect(BuffEffect):
+    def __init__(self, renewHealingSpell):
+        BuffEffect.__init__(self, TEXTURE_ICON_EFFECT_BUFF_BLOODRAGE, 10)
+        self.amount = 1
+
+    def execute(self, livingEntity):
+        livingEntity.offsetRage(self.amount)
 
         self.finishExecute()
         return True
