@@ -1276,11 +1276,63 @@ class EnemyEntityStatusFrame(LivingEntityStatusFrame):
         self.updateColorFromLevel()
 
     def updateColorFromLevel(self):
-        if player.level - 6 >= self.livingEntity.level:
-            self.textColor = LEVEL_DIFFICULTY_TRASH
-        elif player.level - 5 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
-            self.textColor = LEVEL_DIFFICULTY_EASY
-        elif player.level - 2 <= self.livingEntity.level and player.level + 2 >= self.livingEntity.level:
+        if Maths.between(player.level, 1, 9):
+            if player.level - 5 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 4 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 10, 19):
+            if player.level - 6 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 5 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 20, 29):
+            if player.level - 7 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 6 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 30, 39):
+            if player.level - 8 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 7 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 40, 49):
+            if player.level - 9 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 8    <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif player.level == 50:
+            if player.level - 10 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 9 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 51, 54):
+            if player.level - 11 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 10 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 55, 56):
+            if player.level - 12 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 11 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif player.level == 57:
+            if player.level - 9 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 8 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif Maths.between(player.level, 58, 59):
+            if player.level - 12 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 11 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+        elif player.level == 60:
+            if player.level - 9 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_TRASH
+            elif player.level - 8 <= self.livingEntity.level and player.level - 3 >= self.livingEntity.level:
+                self.textColor = LEVEL_DIFFICULTY_EASY
+
+        if player.level - 2 <= self.livingEntity.level and player.level + 2 >= self.livingEntity.level:
             self.textColor = LEVEL_DIFFICULTY_NORMAL
         elif player.level + 3 <= self.livingEntity.level and player.level + 4 >= self.livingEntity.level:
             self.textColor = LEVEL_DIFFICULTY_MEDIUM
@@ -2176,7 +2228,10 @@ class GameLogic(Drawable, Tickable):
                     self.player.experience += int(self.baseXp * (1 - (player.level - oldEnemy.level) / self.zeroDifference))
 
             elif oldEnemy.level > player.level:
-                self.player.experience += int(self.baseXp * (1 + 0.05 * (oldEnemy.level - player.level)))
+                if oldEnemy.level >= player.level + 10:
+                    self.player.experience += 0
+                else :
+                    self.player.experience += int(self.baseXp * (1 + 0.05 * (oldEnemy.level - player.level)))
 
             self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 0), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard
             self.gameObjects.append(player.target)
