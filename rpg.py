@@ -185,6 +185,7 @@ TEXTURE_ICON_SPELL_IMMOLATION = Assets.loadResizedImage("assets/icons/spells/spe
 TEXTURE_ICON_SPELL_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/spells/spell_curseofagony.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FLASHHEAL = Assets.loadResizedImage("assets/icons/spells/spell_flashheal.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_twilightImmolation.png", RESIZE_SPELL)
+TEXTURE_ICON_SPELL_BLOODBLAST = Assets.loadResizedImage("assets/icons/spells/spell_bloodblast.png", RESIZE_SPELL)
 
 TEXTURE_ICON_SPELL_ITEM_MASK = Assets.loadResizedImage("assets/inventory/spellbar/disabled_mask.png", RESIZE_SPELL)
 
@@ -617,6 +618,7 @@ class SpellInventory(Inventory):
         for i in range(0, INVENTORY_SPELL_ITEM_COUNT):
             self.holders.append(SpellItemHolder(0, 0).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
 
+        self.holders[0].item = SpellItem("BloodBlastSpell")
         self.holders[11].item = SpellItem("OneShotDebugAttack")
         self.holders[24].item = SpellItem("BaseAttack")
         self.holders[25].item = SpellItem("HeroicStrikeAttack")
@@ -809,8 +811,13 @@ class ItemHolder(Button):
             if not self.shouldDrawBorder:
                 screen.blit(self.item.texture, (self.x, self.y))
                 screen.blit(TEXTURE_INVENTORY_SPELL_HOLDER_BORDER, (self.x, self.y))
-                if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player):
+                if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player) and not self.item.spell.hasEnoughtTwo(player):
                     screen.blit(TEXTURE_ICON_SPELL_ITEM_MASK, (self.x, self.y))
+                else:
+                    if isinstance(self.item, SpellItem) and not self.item.spell.hasEnought(player):
+                        screen.blit(TEXTURE_ICON_SPELL_ITEM_MASK, (self.x, self.y))
+                    if isinstance(self.item, SpellItem) and not self.item.spell.hasEnoughtTwo(player):
+                        screen.blit(TEXTURE_ICON_SPELL_ITEM_MASK, (self.x, self.y))
                 if self.selected:
                     screen.blit(TEXTURE_HIGHLIGHTRESIZE_TRANSPARENCY, (self.x - 2, self.y - 2))
                 if self.maintained:
@@ -1495,7 +1502,9 @@ class Action(Tickable): #TODO: Add Cooldown for spells to prevent the trigger of
         self.tooltipData = None
         self.cacheTooltip = True
         self.cost = 0
+        self.costTwo = 0
         self.costType = COST_MANA  # TODO: Rendre le costType different selon la class
+        self.costTypeTwo = COST_RAGE  # TODO: Rendre le costType different selon la class
         self.damage = 0
         self.minDamage = 0
         self.maxDamage = 0
@@ -1523,6 +1532,19 @@ class Action(Tickable): #TODO: Add Cooldown for spells to prevent the trigger of
             raise ValueError("Invalid cost type with id: " + self.costType)
 
         return self.cost <= value
+
+    def hasEnoughtTwo(self, livingEntity):
+        value = 0
+        if self.costTypeTwo == COST_HEALTH:
+            value = livingEntity.health
+        elif self.costTypeTwo == COST_MANA:
+            value = livingEntity.mana
+        elif self.costTypeTwo == COST_RAGE:
+            value = livingEntity.rage
+        else:
+            raise ValueError("Invalid cost type with id: " + self.costTypeTwo)
+
+        return self.costTwo <= value
 
     def getTooltipData(self):
         if self.tooltipData == None or not self.cacheTooltip:
@@ -2010,6 +2032,45 @@ class TwilightImmolationSpell(AttackSpell):
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
             DescriptionTooltipData().text("Burns the enemy with a Twilight flame for " + str(self.damage) + " Fire damage and then an additional " + str(self.debuffMaxDamage) + " Fire damage over 6 rounds. Your immolation have a chance to give you as much health as damage you inflict to the enemy.").color(YELLOW_TEXT),
         ]
+
+
+
+class BloodBlastSpell(AttackSpell):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_SPELL_BLOODBLAST)
+        self.cacheToolTip = False
+        self.costTypeTwo = COST_RAGE
+        self.costTwo = 40
+
+    def tick(self):
+        self.cost = 50  # TODO : Ajouter la vraie fonction plus tard
+        self.damage = 45  # TODO : Ajouter la vraie fonction plus tard
+
+    def use(self, player, target):
+        if not self.hasEnought(player) and not self.hasEnoughtTwo(player):
+            return SPELL_ERROR_REASON_YOU_CANT_DO_THIS
+        else:
+            if not self.hasEnought(player):
+                return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
+            if not self.hasEnoughtTwo(player):
+                return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
+
+        player.mana -= self.cost
+        player.rage -= self.costTwo
+
+        target.health -= self.damage
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Blood Blast"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Rage : 40"),
+            DescriptionTooltipData().text("Your mana and your rage mingle and expel a powerful ray that inflicts " + str(self.damage) + " instant damage to the target.").color(YELLOW_TEXT),
+        ]
+
 
 
 class CurseOfAgonySpell(AttackSpell):
