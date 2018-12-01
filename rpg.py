@@ -778,14 +778,15 @@ class ItemHolder(Button):
     def onClick(self, button, pressed):
         if button == MOUSE_LEFT or button == MOUSE_RIGHT:
             self.maintained = pressed
-            if pressed and isinstance(self.item, SpellItem):
-                self.item.triggerUse()
 
         elif button == MOUSE_MIDDLE:
             if pressed and self.item != None and itemMovingSystem.canMoveItem():
                 itemMovingSystem.moveItem(self, self.item)
             elif pressed and itemMovingSystem.isMoving():
                 itemMovingSystem.releaseItem(self)
+
+        if button == MOUSE_LEFT and not pressed and isinstance(self.item, SpellItem):
+             self.item.triggerUse()
 
     def tick(self):
         if not self.selected and self.maintained:
@@ -2041,11 +2042,12 @@ class BloodBlastSpell(AttackSpell):
         Action.__init__(self, TEXTURE_ICON_SPELL_BLOODBLAST)
         self.cacheToolTip = False
         self.costTypeTwo = COST_RAGE
-        self.costTwo = 40
+        self.costTwo = 50
 
     def tick(self):
-        self.cost = 50  # TODO : Ajouter la vraie fonction plus tard
-        self.damage = 45  # TODO : Ajouter la vraie fonction plus tard
+        self.cost = 60  # TODO : Ajouter la vraie fonction plus tard
+        self.minDamage = 37  # TODO : Ajouter la vraie fonction plus tard
+        self.maxDamage = 45  # TODO : Ajouter la vraie fonction plus tard
 
     def use(self, player, target):
         if not self.hasEnought(player) and not self.hasEnoughtTwo(player):
@@ -2059,7 +2061,8 @@ class BloodBlastSpell(AttackSpell):
         player.mana -= self.cost
         player.rage -= self.costTwo
 
-        target.health -= self.damage
+        rand = random.randint(self.minDamage, self.maxDamage)
+        target.health -= rand
 
         return ACTION_SUCCESS
 
@@ -2067,8 +2070,8 @@ class BloodBlastSpell(AttackSpell):
         return [
             TitleTooltipData().text("Blood Blast"),
             DescriptionTooltipData().text("Mana : " + str(self.cost)),
-            DescriptionTooltipData().text("Rage : 40"),
-            DescriptionTooltipData().text("Your mana and your rage mingle and expel a powerful ray that inflicts " + str(self.damage) + " instant damage to the target.").color(YELLOW_TEXT),
+            DescriptionTooltipData().text("Rage : " + str(self.costTwo)),
+            DescriptionTooltipData().text("Your mana and your rage mingle and expel a powerful ray that inflicts between " + str(self.minDamage) + " and " + str(self.maxDamage) + " instant damage to the target.").color(YELLOW_TEXT),
         ]
 
 
