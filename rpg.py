@@ -55,13 +55,13 @@ COST_RAGE = 2
 
 # GAME
 WINDOW_TITLE = "RPG"
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
+WINDOW_WIDTH = 1310
+WINDOW_HEIGHT = 800
 GAME_TICK = 60
 TOOLTIP_MARGIN = 15
 INVENTORY_SPELL_HEIGHT = 50
-INVENTORY_SPELL_ITEM_MAX_ROW_COUNT = 12
-INVENTORY_SPELL_ITEM_COUNT = 36
+INVENTORY_SPELL_ITEM_MAX_ROW_COUNT = 16
+INVENTORY_SPELL_ITEM_COUNT = 64
 ERROR_REMAINING_TICK = 60 * 5
 FRAME_EFFECT_MAX_LINE_COUNT = 5
 
@@ -619,14 +619,14 @@ class SpellInventory(Inventory):
             self.holders.append(SpellItemHolder(0, 0).text(str(i)).texture(TEXTURE_INVENTORY_SPELL_HOLDER))
 
         self.holders[0].item = SpellItem("BloodBlastSpell")
-        self.holders[11].item = SpellItem("OneShotDebugAttack")
-        self.holders[24].item = SpellItem("BaseAttack")
-        self.holders[25].item = SpellItem("HeroicStrikeAttack")
-        self.holders[26].item = SpellItem("RendAttack")
-        self.holders[28].item = SpellItem("BloodRageAttack")
-        self.holders[33].item = SpellItem("EnemyLevelUpDebugAttack")
-        self.holders[34].item = SpellItem("LevelUpDebugAttack")
-        self.holders[35].item = SpellItem("NothingAttack")
+        self.holders[15].item = SpellItem("OneShotDebugAttack")
+        self.holders[48].item = SpellItem("BaseAttack")
+        self.holders[49].item = SpellItem("HeroicStrikeAttack")
+        self.holders[50].item = SpellItem("RendAttack")
+        self.holders[52].item = SpellItem("BloodRageAttack")
+        self.holders[61].item = SpellItem("EnemyLevelUpDebugAttack")
+        self.holders[62].item = SpellItem("LevelUpDebugAttack")
+        self.holders[63].item = SpellItem("NothingAttack")
 
         spells = [
             "FireBallSpell",
@@ -643,12 +643,12 @@ class SpellInventory(Inventory):
         offset = 0
 
         for i in range(0, min(INVENTORY_SPELL_ITEM_MAX_ROW_COUNT, len(spells))):
-            self.holders[offset + 12 + i].item = SpellItem(spells[i])
+            self.holders[offset + 16 + i].item = SpellItem(spells[i])
 
         self.updateButtons()
 
     def updateButtons(self):
-        offset = (WINDOW_WIDTH - ((INVENTORY_SPELL_ITEM_COUNT / 3) * 49)) / 2
+        offset = (WINDOW_WIDTH - ((INVENTORY_SPELL_ITEM_COUNT / 4) * 49)) / 2
         k = 0
         for i in range(0, int(INVENTORY_SPELL_ITEM_COUNT / INVENTORY_SPELL_ITEM_MAX_ROW_COUNT)):
             for j in range(1, INVENTORY_SPELL_ITEM_MAX_ROW_COUNT + 1):
@@ -954,7 +954,7 @@ class SpellTooltip(Tooltip):
         self.y = WINDOW_HEIGHT * 0.95 - total_height
 
         rectangle = (self.x + 8 - TOOLTIP_MARGIN, self.y - 25 - TOOLTIP_MARGIN, max_width + 8 + TOOLTIP_MARGIN, total_height + 8 + TOOLTIP_MARGIN)
-        pygame.draw.rect(screen, DARK_BLUE_BACK, rectangle)
+        screen.blit((Assets.loadResizedImage("assets/inventory/tooltip/tooltip_background.png", (max_width + 8 + TOOLTIP_MARGIN, total_height + 8 + TOOLTIP_MARGIN))), rectangle)  # OLDVERSION : pygame.draw.rect(screen, DARK_BLUE_BACK, rectangle)  TODO : Possible to make a less longer texture loading with resize ?
         pygame.draw.rect(screen, WHITE, rectangle, 1)
 
         for i in range(0, len(texts)):
