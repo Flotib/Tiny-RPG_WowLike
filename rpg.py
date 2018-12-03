@@ -174,6 +174,7 @@ TEXTURE_ICON_ABILITY_BASEATTACK = Assets.loadResizedImage("assets/icons/spells/a
 TEXTURE_ICON_ABILITY_REND = Assets.loadResizedImage("assets/icons/spells/ability_rend.png", RESIZE_SPELL)
 TEXTURE_ICON_ABILITY_HEROICSTRIKE = Assets.loadResizedImage("assets/icons/spells/ability_heroicstrike.png", RESIZE_SPELL)
 TEXTURE_ICON_ABILITY_BLOODRAGE = Assets.loadResizedImage("assets/icons/spells/ability_bloodrage.png", RESIZE_SPELL)
+TEXTURE_ICON_ABILITY_BLOODYHIT = Assets.loadResizedImage("assets/icons/spells/ability_bloodyhit.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_NOTHING = Assets.loadResizedImage("assets/icons/spells/spell_nothing.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_LIFEDRAIN = Assets.loadResizedImage("assets/icons/spells/spell_lifedrain.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FIREBALL = Assets.loadResizedImage("assets/icons/spells/spell_fireball.png", RESIZE_SPELL)
@@ -623,7 +624,8 @@ class SpellInventory(Inventory):
         self.holders[48].item = SpellItem("BaseAttack")
         self.holders[49].item = SpellItem("HeroicStrikeAttack")
         self.holders[50].item = SpellItem("RendAttack")
-        self.holders[52].item = SpellItem("BloodRageAttack")
+        self.holders[51].item = SpellItem("BloodyHitAttack")
+        self.holders[53].item = SpellItem("BloodRageAttack")
         self.holders[61].item = SpellItem("EnemyLevelUpDebugAttack")
         self.holders[62].item = SpellItem("LevelUpDebugAttack")
         self.holders[63].item = SpellItem("NothingAttack")
@@ -1673,7 +1675,7 @@ class BaseAttack(Attack):
         self.cacheTooltip = False
 
     def use(self, player, target):
-        target.health -= random.randint(3, 5)  # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        target.health -= random.randint(3, 5)  # TODO: (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         player.offsetMana(7)
         player.offsetRage(random.randint(2,4))
         return ACTION_SUCCESS
@@ -1694,15 +1696,15 @@ class HeroicStrikeAttack(Attack):
         self.costType = COST_RAGE
 
     def tick(self):
-        self.amount = 11 # TODO: maths function
+        self.damage = 11 # TODO: ajust damage by level / bonus maths function
 
     def use(self, player, target):
         if not self.hasEnought(player):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
 
         player.offsetRage(-15)
-
-        damage = random.randint(3, 5) + self.amount   # (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        player.offsetMana(7)
+        damage = random.randint(3, 5) + self.damage   # TODO: (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
         target.health -= damage
 
         return ACTION_SUCCESS
@@ -1711,7 +1713,7 @@ class HeroicStrikeAttack(Attack):
         return [
             TitleTooltipData().text("Heroic Strike"),
             DescriptionTooltipData().text("Rage : " + str(self.cost)),
-            DescriptionTooltipData().text("A strong attack that increases melee damage by " + str(self.amount) + ".").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("A strong attack that increases melee damage by " + str(self.damage) + ".").color(YELLOW_TEXT)
         ]
 
 
@@ -1725,7 +1727,7 @@ class RendAttack(Attack):
         self.costType = COST_RAGE
 
     def tick(self):
-        self.amount = 5
+        self.amount = 5 
         self.debuffMaxDamage = 15  # TODO: maths function
 
     def use(self, player, target):
@@ -1733,7 +1735,7 @@ class RendAttack(Attack):
             return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
 
         player.offsetRage(-10)
-
+        player.offsetMana(7)
         target.giveEffect(BleedingRendEffect(self))
 
         return ACTION_SUCCESS
@@ -1764,7 +1766,7 @@ class BloodRageAttack(Attack):
 
         player.offsetHealth(-self.cost)
         player.offsetRage(self.amount)
-
+        player.offsetMana(7)
         player.giveEffect(BloodRageEffect(self))
 
         return ACTION_REPLAY
@@ -1777,6 +1779,37 @@ class BloodRageAttack(Attack):
             DescriptionTooltipData().text("Generates " + str(self.amount) + " rage at the cost of health, and then generates an additional 10 rage over 10 sec.").color(YELLOW_TEXT)
         ]
 
+
+class BloodyHitAttack(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_ABILITY_BLOODYHIT)
+        self.cacheTooltip = False
+        self.costType = COST_RAGE
+
+    def tick(self):
+        self.cost = 20
+        self.damage = 4 # TODO: ajust damage by level / bonus 
+        self.amount = int(player.baseHealth * 0.16)
+
+    def use(self, player, target):
+        if not self.hasEnought(player):
+            return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
+
+        player.offsetRage(-20)
+        player.offsetMana(7)
+        damage = random.randint(3, 5) + self.damage   # TODO: (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        target.health -= damage
+        player.offsetHealth(self.amount)
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Bloody hit"),
+            DescriptionTooltipData().text("Rage : " + str(self.cost)),
+            DescriptionTooltipData().text("Bloody attack who inflicts " + str(self.damage) + " damage to the target and give you back 16% of your base health.").color(YELLOW_TEXT)
+        ]
 
 
 class NothingAttack(Attack):
