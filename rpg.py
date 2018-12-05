@@ -186,6 +186,7 @@ TEXTURE_ICON_SPELL_IMMOLATION = Assets.loadResizedImage("assets/icons/spells/spe
 TEXTURE_ICON_SPELL_CURSEOFAGONY = Assets.loadResizedImage("assets/icons/spells/spell_curseofagony.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_FLASHHEAL = Assets.loadResizedImage("assets/icons/spells/spell_flashheal.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_TWILIGHTIMMOLATION = Assets.loadResizedImage("assets/icons/spells/spell_twilightImmolation.png", RESIZE_SPELL)
+TEXTURE_ICON_SPELL_RITUALOFSACRIFICE = Assets.loadResizedImage("assets/icons/spells/spell_ritualofsacrifice.png", RESIZE_SPELL)
 TEXTURE_ICON_SPELL_BLOODBLAST = Assets.loadResizedImage("assets/icons/spells/spell_bloodblast.png", RESIZE_SPELL)
 
 TEXTURE_ICON_SPELL_ITEM_MASK = Assets.loadResizedImage("assets/inventory/spellbar/disabled_mask.png", RESIZE_SPELL)
@@ -625,7 +626,8 @@ class SpellInventory(Inventory):
         self.holders[49].item = SpellItem("HeroicStrikeAttack")
         self.holders[50].item = SpellItem("RendAttack")
         self.holders[51].item = SpellItem("BloodyHitAttack")
-        self.holders[53].item = SpellItem("BloodRageAttack")
+        self.holders[51].item = SpellItem("RitualOfSacrifice")
+        self.holders[54].item = SpellItem("BloodRageAttack")
         self.holders[61].item = SpellItem("EnemyLevelUpDebugAttack")
         self.holders[62].item = SpellItem("LevelUpDebugAttack")
         self.holders[63].item = SpellItem("NothingAttack")
@@ -1508,8 +1510,8 @@ class Player(LivingEntity):
 
     def onLevelUp(self):
         self.experience = 0
-        self.maxHealth = int(self.baseHealth * self.level)
-        self.maxMana = int(self.baseMana * self.level)
+        self.maxHealth = int(self.baseHealth * self.level) # TODO: modify function
+        self.maxMana = int(self.baseMana * self.level) # TODO: modify function
         self.health = self.maxHealth
         self.mana = self.maxMana
 
@@ -1713,7 +1715,7 @@ class HeroicStrikeAttack(Attack):
         return [
             TitleTooltipData().text("Heroic Strike"),
             DescriptionTooltipData().text("Rage : " + str(self.cost)),
-            DescriptionTooltipData().text("A strong attack that increases melee damage by " + str(self.damage) + ".").color(YELLOW_TEXT)
+            DescriptionTooltipData().text("A strong attack that inflicts " + str(self.damage) + " melee damage to the enemy.").color(YELLOW_TEXT)
         ]
 
 
@@ -1806,9 +1808,48 @@ class BloodyHitAttack(Attack):
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Bloody hit"),
+            TitleTooltipData().text("Bloody Hit"),
             DescriptionTooltipData().text("Rage : " + str(self.cost)),
             DescriptionTooltipData().text("Bloody attack who inflicts " + str(self.damage) + " damage to the target and give you back 16% of your base health.").color(YELLOW_TEXT)
+        ]
+
+
+class RitualOfSacrifice(Attack):
+
+    def __init__(self):
+        Action.__init__(self, TEXTURE_ICON_SPELL_RITUALOFSACRIFICE)
+        self.cacheTooltip = False
+        self.costType = COST_MANA
+        self.costTypeTwo = COST_RAGE
+        self.costTwo = 15
+
+    def tick(self):
+        self.cost = 24 # TODO: maths function
+        self.damage = 18 # TODO: ajust damage by level / bonus 
+
+    def use(self, player, target):
+        if not self.hasEnought(player) and not self.hasEnoughtTwo(player):
+            return SPELL_ERROR_REASON_YOU_CANT_DO_THIS
+        else:
+            if not self.hasEnought(player):
+                return SPELL_ERROR_REASON_NOT_ENOUGHT_MANA
+            if not self.hasEnoughtTwo(player):
+                return SPELL_ERROR_REASON_NOT_ENOUGHT_RAGE
+
+        player.mana -= self.cost
+        player.rage -= self.costTwo
+
+        damage = random.randint(3, 5) + self.damage   # TODO: (player.equipementWeaponMinDamage, player.equipementWeaponMaxDamage)
+        target.health -= damage
+
+        return ACTION_SUCCESS
+
+    def createTooltipData(self):
+        return [
+            TitleTooltipData().text("Ritual of Sacrifice"),
+            DescriptionTooltipData().text("Mana : " + str(self.cost)),
+            DescriptionTooltipData().text("Rage : " + str(self.costTwo)),
+            DescriptionTooltipData().text("Empowered your weapon with mana and hit the enemy. Deal " + str(self.damage) + " in addition to your weapon base damage.").color(YELLOW_TEXT)
         ]
 
 
