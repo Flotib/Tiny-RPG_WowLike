@@ -1507,7 +1507,14 @@ class Player(LivingEntity):
         self.canPlay = False
         self.hasPlay = False
         self.target = None
-
+        self.stamina = 0
+        self.intellect = 0
+        self.agility = 0
+        self.strenght = 0
+        self.spirit = 0
+        self.luck = 0
+        self.armor = 0
+              
     def onLevelUp(self):
         self.experience = 0
         self.maxHealth = int(self.baseHealth * self.level) # TODO: modify function
@@ -1530,7 +1537,7 @@ class Player(LivingEntity):
         elif player.level >= 32:
             self.Diff = 5 * (player.level - 30)
 
-        self.maxExperience = int(((8 * player.level) + self.Diff) * ((player.level * 5) + 45))
+        self.maxExperience = int(((8 * player.level) + self.Diff) * ((player.level * 5) + 45)) #Real XP function (not change for the moment) self.maxExperience = int(((8 * player.level) + self.Diff) * ((player.level * 5) + 45))
 
         if self.experience >= self.maxExperience:
             self.levelUp()
@@ -1775,7 +1782,7 @@ class BloodRageAttack(Attack):
 
     def createTooltipData(self):
         return [
-            TitleTooltipData().text("Bloodrage "),
+            TitleTooltipData().text("Bloodrage"),
             DescriptionTooltipData().text("16% of base Health"),
             DescriptionTooltipData().text("Instant"),
             DescriptionTooltipData().text("Generates " + str(self.amount) + " rage at the cost of health, and then generates an additional 10 rage over 10 sec.").color(YELLOW_TEXT)
