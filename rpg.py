@@ -248,6 +248,8 @@ TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_2 = Assets.loadResizedImage("assets/targetf
 TEXTURE_FRAME_PORTRAIT_DEMON_IMPMOTHER_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/impmother1.png", RESIZE_PORTRAIT)
 TEXTURE_FRAME_PORTRAIT_DEMON_INFERNAL_1 = Assets.loadResizedImage("assets/targetframes/portraits/demons/infernal1.png", RESIZE_PORTRAIT)
 
+EnemyPortraitsList = [TEXTURE_FRAME_PORTRAIT_ANIMAL_WOLF_WHITE,TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_1,TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_2,TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_BROWN_3,TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_GREY_1,TEXTURE_FRAME_PORTRAIT_ANIMAL_BEAR_ZOMBIE_1,TEXTURE_FRAME_PORTRAIT_ANIMAL_RAPTOR_BLUE,TEXTURE_FRAME_PORTRAIT_ANIMAL_RAT_1,TEXTURE_FRAME_PORTRAIT_ANIMAL_CERBERUS_WHITE,TEXTURE_FRAME_PORTRAIT_ANIMAL_SPIDER_BLACK_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_HUMAN_MALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_HUMAN_FEMALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_NIGHTELF_MALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_WORGEN_MALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_SINDOREI_FEMALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_GNOME_MALE_1,TEXTURE_FRAME_PORTRAIT_DEFIAS_UNDEAD_MALE_1,TEXTURE_FRAME_PORTRAIT_DEMON_SUCCUBUS_1,TEXTURE_FRAME_PORTRAIT_DEMON_SUCCUBUS_2,TEXTURE_FRAME_PORTRAIT_DEMON_IMP_1,TEXTURE_FRAME_PORTRAIT_DEMON_IMP_2,TEXTURE_FRAME_PORTRAIT_DEMON_IMP_3,TEXTURE_FRAME_PORTRAIT_DEMON_IMP_4,TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_1,TEXTURE_FRAME_PORTRAIT_DEMON_PITLORD_2,TEXTURE_FRAME_PORTRAIT_DEMON_IMPMOTHER_1,TEXTURE_FRAME_PORTRAIT_DEMON_INFERNAL_1]
+
 
 class Maths:
 
@@ -1503,7 +1505,7 @@ class Player(LivingEntity):
 
     def __init__(self, x, y, health, mana, rage, level, name):
         LivingEntity.__init__(self, x, y, health, mana, rage, name, level, 0)
-        self.texture = TEXTURE_TEST_PORTRAIT
+        self.texture = TEXTURE_FRAME_PORTRAIT_DEFIAS_HUMAN_MALE_1
         self.canPlay = False
         self.hasPlay = False
         self.target = None
@@ -1548,7 +1550,7 @@ class Enemy(LivingEntity):
     def __init__(self, x, y, health, level, attack):
         LivingEntity.__init__(self, x, y, health, 0, 0, "Enemy", level, 0)
         self.attackValue = attack
-        self.texture = TEXTURE_FRAME_PORTRAIT_DEMON_IMP_1
+        self.texture = random.choice(EnemyPortraitsList)
 
     def attack(self, player):
         player.health -= self.attackValue * self.level
@@ -2314,7 +2316,7 @@ class GameLogic(Drawable, Tickable):
                 else :
                     self.player.experience += int(self.baseXp * (1 + 0.05 * (oldEnemy.level - player.level)))
 
-            self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 0), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard
+            self.player.target = Enemy(0, 0, int(oldEnemy.maxHealth * 1), int(oldEnemy.level + 1), int(oldEnemy.attackValue * 1))  # TODO: Changer les multiplicateurs plus tard +++ level up de l'ennemi lors de la mort 
             self.gameObjects.append(player.target)
 
             uiManager.components.remove(uiManager.enemyFrame)
